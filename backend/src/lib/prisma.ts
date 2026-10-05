@@ -3,6 +3,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client";
 import { LARGE_SCENARIO_SCHEMA, SCENARIO_COOKIE, type Scenario } from "@fisheye/shared/scenario";
 import { requestCookie } from "./context";
+import { withRetry } from "./retry";
 
 const globalForPrisma = globalThis as unknown as {
   pgPool: Pool | undefined;
@@ -18,7 +19,18 @@ const globalForPrisma = globalThis as unknown as {
 const pool = (globalForPrisma.pgPool ??= createPool());
 
 function createPool() {
-  const created = new Pool({ connectionString: process.env.DATABASE_URL, max: 5 });
+  const created = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    max: 5,
+    // Give up on a stalled connection attempt after 10s so the query can be
+    // retried, instead of waiting for the operating system's much longer timeout.
+    connectionTimeoutMillis: 10_000,
+    // A hosted database (Neon) closes idle connections; keep-alives help the
+    // rest of the network path notice, and unused connections are dropped
+    // before the server drops them.
+    keepAlive: true,
+    idleTimeoutMillis: 20_000,
+  });
   // A dropped idle connection is replaced on the next query; without a
   // listener it would crash the server.
   created.on("error", (error) => console.error("Postgres pool error:", error.message));
@@ -38,7 +50,11 @@ function largeScenarioExists() {
   return (globalForPrisma.largeScenarioExists ??= clientFor("real")
     .$queryRaw<{ found: boolean }[]>`SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = ${LARGE_SCENARIO_SCHEMA} AND table_name = 'ponds') AS found`
     .then((rows) => rows[0]?.found === true)
-    .catch(() => false));
+    .catch(() => {
+      // Do not remember a failure: try again on the next request.
+      globalForPrisma.largeScenarioExists = undefined;
+      return false;
+    }));
 }
 
 /** The scenario this request shows: the real farm unless the switch chose the 100-pond demo and it exists. */
@@ -60,6 +76,8 @@ async function currentClient() {
 // request's scenario. Model calls and interactive transactions resolve the
 // client first, so they return plain promises rather than PrismaPromises:
 // use `$transaction(async (tx) => …)`, not the array form.
+// Read calls are retried a couple of times on connection errors (lib/retry.ts).
+const READS = new Set(["findMany", "findUnique", "findFirst", "findUniqueOrThrow", "findFirstOrThrow", "count", "aggregate", "groupBy"]);
 export const prisma = new Proxy({} as PrismaClient, {
   get(_, property: string | symbol) {
     if (typeof property !== "string" || property === "then") return undefined;
@@ -74,11 +92,12 @@ export const prisma = new Proxy({} as PrismaClient, {
       {
         get(__, method: string | symbol) {
           if (typeof method !== "string" || method === "then") return undefined;
-          return (...args: unknown[]) =>
+          const call = (...args: unknown[]) =>
             currentClient().then((client) => {
               const delegate = client[property as keyof PrismaClient] as unknown as Record<string, (...a: unknown[]) => unknown>;
               return delegate[method](...args);
             });
+          return READS.has(method) ? (...args: unknown[]) => withRetry(() => call(...args)) : call;
         },
       },
     );

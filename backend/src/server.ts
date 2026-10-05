@@ -1,5 +1,10 @@
 import { config } from "dotenv";
+import dns from "node:dns";
 import { serve } from "@hono/node-server";
+
+// Some networks resolve the database host to IPv6 addresses they cannot reach;
+// try IPv4 first so those connections do not stall.
+dns.setDefaultResultOrder("ipv4first");
 
 // Same order as before: .env.local wins over .env.
 config({ path: ".env.local", quiet: true });
