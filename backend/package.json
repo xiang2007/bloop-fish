@@ -1,0 +1,30 @@
+{
+  "name": "@fisheye/backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "build": "prisma generate && prisma migrate deploy",
+    "typecheck": "tsc --noEmit",
+    "db:mock": "tsx prisma/mock.ts",
+    "db:scenario": "tsx prisma/scenario.ts"
+  },
+  "dependencies": {
+    "@fisheye/shared": "*",
+    "@hono/node-server": "^1.13.0",
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.10.0",
+    "dotenv": "^18.0.3",
+    "hono": "^4.6.0",
+    "pg": "^8.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/pg": "^8.23.1",
+    "prisma": "^7.10.0",
+    "tsx": "^4.23.15",
+    "typescript": "^5"
+  }
+}

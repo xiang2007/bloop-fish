@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": { "title": "Owner Records a Final Harvest", "output": "../seq-harvest.html", "quality_profile": "showcase", "viewBox": [820, 740] },
+  "participants": [
+    { "id": "owner", "type": "external", "label": "Owner", "sublabel": "Cycle tab" },
+    { "id": "action", "type": "backend", "label": "recordHarvest", "sublabel": "server action" },
+    { "id": "tx", "type": "backend", "label": "Transaction", "sublabel": "prisma.$transaction" },
+    { "id": "db", "type": "database", "label": "PostgreSQL", "sublabel": "harvests, cycles" }
+  ],
+  "messages": [
+    { "from": "owner", "to": "action", "y": 190, "label": "grade lines, boxes, isFinal", "variant": "emphasis" },
+    { "from": "action", "to": "db", "y": 234, "label": "pond, size grades, boxKg", "variant": "default" },
+    { "from": "db", "to": "action", "y": 278, "label": "rows", "variant": "return" },
+    { "from": "action", "to": "tx", "y": 336, "label": "validate then open", "variant": "emphasis" },
+    { "from": "tx", "to": "db", "y": 380, "label": "insert harvest + lines", "variant": "default" },
+    { "from": "tx", "to": "db", "y": 424, "label": "sum feed, cost, deaths", "variant": "default" },
+    { "from": "tx", "to": "db", "y": 468, "label": "insert pond_cycles snapshot", "variant": "emphasis" },
+    { "from": "tx", "to": "db", "y": 512, "label": "clear stockedAt, set cycleId", "variant": "emphasis" },
+    { "from": "action", "to": "owner", "y": 576, "label": "success, revalidate layout", "variant": "return" },
+    { "from": "action", "to": "owner", "y": 620, "label": "error with fieldErrors", "variant": "dashed" }
+  ],
+  "activations": [
+    { "participant": "action", "from": 184, "to": 626, "type": "backend" },
+    { "participant": "tx", "from": 330, "to": 518, "type": "backend" },
+    { "participant": "db", "from": 228, "to": 284, "type": "database" },
+    { "participant": "db", "from": 374, "to": 518, "type": "database" }
+  ],
+  "cards": [
+    { "dot": "amber", "title": "Partial vs final", "items": ["Not final: only the harvest is inserted", "Final: closes the cycle atomically"] },
+    { "dot": "emerald", "title": "Total kg", "items": ["Weighed lines win", "Otherwise boxes x box weight setting"] }
+  ]
+}
