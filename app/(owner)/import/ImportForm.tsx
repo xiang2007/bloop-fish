@@ -3,6 +3,7 @@
 import { useActionState, useRef, useState } from "react";
 import { importSpreadsheet } from "@/app/actions/owner";
 import type { FormState } from "@/app/actions/logs";
+import { checkCsvFile, decodeCsv } from "@/lib/import/validate";
 import { PondReportError, parsePondReport } from "@/lib/import/pondReport";
 import { buildImportPlan, type FeedCatalogEntry, type ImportPlan } from "@/lib/import/plan";
 import { formatNumber, formatRm } from "@/lib/format";
@@ -38,7 +39,13 @@ export default function ImportForm({
     setParseError(null);
     setPlan(null);
     try {
-      const parsed = parsePondReport(await file.text());
+      const wrongKind = checkCsvFile(file);
+      const decoded = wrongKind ? { rejected: wrongKind } : decodeCsv(new Uint8Array(await file.arrayBuffer()));
+      if ("rejected" in decoded) {
+        setParseError(t(decoded.rejected === "unsafe" ? "error.csvUnsafe" : "error.notCsv"));
+        return;
+      }
+      const parsed = parsePondReport(decoded.text);
       setPlan(buildImportPlan(parsed, catalog));
     } catch (error) {
       setParseError(error instanceof PondReportError ? error.message : t("error.readCsv"));

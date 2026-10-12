@@ -24,7 +24,8 @@ const VIEWS = ["overview", "cycle", "records", "data", "settings"] as const;
 type View = (typeof VIEWS)[number];
 
 export async function generateMetadata({ params }: PageProps<"/ponds/[id]">): Promise<Metadata> {
-  const detail = await getPondDetail(Number((await params).id));
+  const id = Number((await params).id);
+  const detail = Number.isInteger(id) ? await getPondDetail(id) : null;
   return { title: detail?.pond.name ?? "Pond" };
 }
 
