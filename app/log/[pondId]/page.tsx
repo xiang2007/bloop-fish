@@ -20,7 +20,8 @@ import SamplingForm from "./SamplingForm";
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: PageProps<"/log/[pondId]">): Promise<Metadata> {
-  const pond = await prisma.pond.findUnique({ where: { id: Number((await params).pondId) } });
+  const id = Number((await params).pondId);
+  const pond = Number.isInteger(id) ? await prisma.pond.findUnique({ where: { id } }) : null;
   const { t } = await getI18n();
   return { title: pond ? t("log.logPond", { pond: pond.name }) : t("nav.dailyLog") };
 }

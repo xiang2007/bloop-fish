@@ -4,9 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { dateToDayKey } from "@/lib/dates";
 import { getI18n } from "@/lib/i18n/server";
 import { getBoxKg } from "@/lib/settings";
-import { BoxIcon, ChevronRightIcon, FeedIcon, FishIcon, MapIcon, WavesIcon } from "@/app/components/icons";
+import { getAuthClient } from "@/lib/prisma";
+import { requireOwner } from "@/lib/session";
+import { BoxIcon, ChevronRightIcon, FeedIcon, FishIcon, MapIcon, UserIcon, WavesIcon } from "@/app/components/icons";
 import { Badge, Card, CardHeader, PageHeader } from "@/app/components/ui";
-import { BoxKgForm, FarmRow, FeedTypeRow, GradeRow, NewFarmForm, NewFeedTypeForm, NewGradeForm, NewPondForm } from "./SettingsForms";
+import { BoxKgForm, FarmRow, FeedTypeRow, GradeRow, NewFarmForm, NewFeedTypeForm, NewGradeForm, NewPondForm, NewUserForm, UserRow } from "./SettingsForms";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +19,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function SettingsPage() {
   const { t, fmt } = await getI18n();
-  const [ponds, feedTypes, farms, grades, boxKg] = await Promise.all([
+  const [me, ponds, feedTypes, farms, grades, boxKg, users] = await Promise.all([
+    requireOwner(),
     prisma.pond.findMany({
       orderBy: { id: "asc" },
       include: { _count: { select: { dailyLogs: true } }, farm: { select: { name: true } } },
@@ -26,6 +29,7 @@ export default async function SettingsPage() {
     prisma.farm.findMany({ orderBy: { id: "asc" }, include: { _count: { select: { ponds: true } } } }),
     prisma.sizeGrade.findMany({ orderBy: [{ sortOrder: "asc" }, { id: "asc" }], include: { _count: { select: { lines: true } } } }),
     getBoxKg(),
+    getAuthClient().user.findMany({ orderBy: [{ role: "asc" }, { name: "asc" }] }),
   ]);
 
   return (
@@ -146,6 +150,39 @@ export default async function SettingsPage() {
           <Card>
             <CardHeader icon={<BoxIcon className="size-4" />} title={t("settings.boxTitle")} description={t("settings.boxDescription")} />
             <BoxKgForm boxKg={boxKg} />
+          </Card>
+
+          <Card>
+            <CardHeader icon={<UserIcon className="size-4" />} title={t("users.title")} description={t("users.description")} />
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full min-w-[560px] text-sm">
+                <thead>
+                  <tr className="border-y border-line bg-surface-2 text-left text-xs text-ink-3">
+                    <th className="px-5 py-2.5 font-medium">{t("users.name")}</th>
+                    <th className="px-2 py-2.5 font-medium">{t("users.role")}</th>
+                    <th className="px-2 py-2.5 font-medium">{t("users.password")}</th>
+                    <th className="px-2 py-2.5 font-medium">{t("settings.active")}</th>
+                    <th className="px-5 py-2.5" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map((user) => (
+                    <UserRow
+                      key={user.id}
+                      user={{
+                        id: user.id,
+                        name: user.name,
+                        username: user.username,
+                        role: user.role === "owner" ? "owner" : "worker",
+                        active: user.active,
+                        isMe: user.id === me.userId,
+                      }}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <NewUserForm />
           </Card>
         </div>
       </div>

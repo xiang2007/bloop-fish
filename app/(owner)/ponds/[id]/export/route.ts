@@ -5,7 +5,9 @@ import { dateToDayKey, monthsBetween, monthKeyOf } from "@/lib/dates";
 
 function csvCell(value: string | number | null | undefined) {
   if (value === null || value === undefined) return "";
-  const text = String(value);
+  let text = String(value);
+  // Notes are typed by workers; stop Excel treating one as a formula.
+  if (typeof value === "string" && /^[=+\-@\t\r]/.test(text)) text = `'${text}`;
   return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
@@ -15,6 +17,7 @@ export async function GET(_request: Request, { params }: RouteContext<"/ponds/[i
   if (session?.role !== "owner") return new Response("Forbidden", { status: 403 });
 
   const pondId = Number((await params).id);
+  if (!Number.isInteger(pondId)) return new Response("Not found", { status: 404 });
   const pond = await prisma.pond.findUnique({
     where: { id: pondId },
     include: {

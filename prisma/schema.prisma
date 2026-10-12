@@ -13,6 +13,21 @@ datasource db {
 // Calendar days are stored as UTC midnight of the farm-local date
 // (see lib/dates.ts) so a record never drifts across a day boundary.
 
+// A person who can sign in. `role` decides which side of the app they get:
+// "owner" (dashboard) or "worker" (daily log only). Accounts always live in
+// the real schema, whichever demo scenario is showing.
+model User {
+  id           Int      @id @default(autoincrement())
+  username     String   @unique
+  name         String
+  passwordHash String   @map("password_hash")
+  role         String   @default("worker")
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("users")
+}
+
 // A site the ponds are grouped under on the farm map.
 model Farm {
   id        Int      @id @default(autoincrement())

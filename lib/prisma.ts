@@ -41,6 +41,11 @@ function largeScenarioExists() {
     .catch(() => false));
 }
 
+/** Accounts are shared by both scenarios, so they always use the real schema. */
+export function getAuthClient() {
+  return clientFor("real");
+}
+
 /** The scenario this request shows: the real farm unless the switch chose the 100-pond demo and it exists. */
 export async function getScenario(): Promise<Scenario> {
   let wanted: string | undefined;

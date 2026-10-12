@@ -9,6 +9,8 @@ import { getI18n } from "@/lib/i18n/server";
 import { PondReportError, normalizeFeedCode, parsePondReport } from "@/lib/import/pondReport";
 import { buildImportPlan } from "@/lib/import/plan";
 import { commitImportPlan } from "@/lib/import/commit";
+import { checkCsvFile, decodeCsv } from "@/lib/import/validate";
+import { allow } from "@/lib/rateLimit";
 import { getBoxKg } from "@/lib/settings";
 import type { FormState } from "./logs";
 
@@ -306,8 +308,12 @@ export async function deleteImportBatch(formData: FormData) {
 }
 
 export async function importSpreadsheet(_prev: FormState, formData: FormData): Promise<FormState> {
-  await requireOwner();
+  const session = await requireOwner();
   const { t } = await getI18n();
+  // Parsing a sheet is the heaviest thing a request can ask for.
+  if (!allow(`import:${session.userId}`, 10, 10 * 60 * 1000)) {
+    return { status: "error", message: t("error.importRate") };
+  }
   const file = formData.get("file");
   const target = text(formData, "target");
   const newPondName = text(formData, "newPondName", 40);
@@ -318,6 +324,11 @@ export async function importSpreadsheet(_prev: FormState, formData: FormData): P
   }
   if (file.size > MAX_SHEET_BYTES) {
     return { status: "error", message: t("error.csvTooLarge") };
+  }
+  if (checkCsvFile(file)) return { status: "error", message: t("error.notCsv") };
+  const decoded = decodeCsv(new Uint8Array(await file.arrayBuffer()));
+  if ("rejected" in decoded) {
+    return { status: "error", message: t(decoded.rejected === "unsafe" ? "error.csvUnsafe" : "error.notCsv") };
   }
 
   const errors: Record<string, string> = {};
@@ -333,7 +344,7 @@ export async function importSpreadsheet(_prev: FormState, formData: FormData): P
 
   let plan;
   try {
-    const parsed = parsePondReport(await file.text());
+    const parsed = parsePondReport(decoded.text);
     plan = buildImportPlan(parsed, await prisma.feedType.findMany());
   } catch (error) {
     if (error instanceof PondReportError) return { status: "error", message: error.message };

@@ -1,9 +1,15 @@
 import { getScenario, isLargeScenarioAvailable } from "@/lib/prisma";
 import { getPondsWithMetrics } from "@/lib/queries";
+import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import OwnerNav from "./OwnerNav";
 
 export default async function OwnerLayout({ children }: LayoutProps<"/">) {
+  // The proxy only reads the cookie; this re-checks the account in the database.
+  const current = await getSession();
+  if (!current) redirect("/select-role");
+  if (current.role !== "owner") redirect("/log");
+
   const [entries, session, scenario, canSwitch] = await Promise.all([
     getPondsWithMetrics(),
     getSession(),
