@@ -8,7 +8,7 @@
 import { config } from "dotenv";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../app/generated/prisma/client";
-import { MIN_PASSWORD_LENGTH, hashPassword } from "../lib/password";
+import { MIN_PASSWORD_LENGTH, hashPassword, passwordProblem } from "../lib/password";
 
 config({ path: ".env.local", quiet: true });
 config({ path: ".env", quiet: true });
@@ -49,8 +49,13 @@ async function main() {
 
   const fromEnv = process.env.FISHEYE_PASSWORD;
   const password = fromEnv ?? (await askHidden(`Password for ${username}: `));
-  if (password.length < MIN_PASSWORD_LENGTH) {
+  const problem = passwordProblem(password, [username, name]);
+  if (problem === "short") {
     console.error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
+    process.exit(1);
+  }
+  if (problem === "weak") {
+    console.error("That password is too easy to guess. Avoid common words and your own name or username.");
     process.exit(1);
   }
   if (fromEnv === undefined && password !== (await askHidden("Repeat password: "))) {
@@ -63,7 +68,8 @@ async function main() {
     const passwordHash = await hashPassword(password);
     const user = await prisma.user.upsert({
       where: { username },
-      update: { name, role, passwordHash, active: true },
+      // Resetting an account also ends its existing sessions.
+      update: { name, role, passwordHash, active: true, sessionVersion: { increment: 1 } },
       create: { username, name, role, passwordHash },
     });
     console.log(`${user.role} "${user.username}" (${user.name}) is ready to sign in.`);

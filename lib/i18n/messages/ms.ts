@@ -816,6 +816,8 @@ export const ms: Messages = {
   "users.nameRequired": "Masukkan nama.",
   "users.usernameRule": "3–30 aksara: huruf kecil, nombor, titik, sengkang atau garis bawah.",
   "users.passwordRule": "Sekurang-kurangnya {n} aksara.",
+  "users.passwordWeak": "Terlalu mudah diteka. Elakkan kata laluan biasa serta nama atau nama pengguna sendiri.",
+  "users.signOutEverywhere": "Log keluar dari semua peranti",
   "users.usernameTaken": "Nama pengguna itu sudah digunakan.",
   "users.roleRequired": "Pilih peranan.",
   "users.created": "{name} kini boleh log masuk.",

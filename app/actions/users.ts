@@ -2,9 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { getAuthClient } from "@/lib/prisma";
-import { requireOwner } from "@/lib/session";
+import { requireOwner, startSession } from "@/lib/session";
 import { getI18n } from "@/lib/i18n/server";
-import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, hashPassword } from "@/lib/password";
+import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, hashPassword, passwordProblem } from "@/lib/password";
 import { isRole } from "@/lib/role";
 import type { FormState } from "./logs";
 
@@ -30,8 +30,11 @@ export async function createUser(_prev: FormState, formData: FormData): Promise<
   const errors: Record<string, string> = {};
   if (!name) errors.name = t("users.nameRequired");
   if (!USERNAME_PATTERN.test(username)) errors.username = t("users.usernameRule");
-  if (password.length < MIN_PASSWORD_LENGTH || password.length > MAX_PASSWORD_LENGTH) {
-    errors.password = t("users.passwordRule", { n: MIN_PASSWORD_LENGTH });
+  if (password.length > MAX_PASSWORD_LENGTH) errors.password = t("users.passwordRule", { n: MIN_PASSWORD_LENGTH });
+  else {
+    const problem = passwordProblem(password, [username, name]);
+    if (problem === "short") errors.password = t("users.passwordRule", { n: MIN_PASSWORD_LENGTH });
+    else if (problem === "weak") errors.password = t("users.passwordWeak");
   }
   if (!isRole(role)) errors.role = t("users.roleRequired");
   if (Object.keys(errors).length > 0) return invalid(errors);
@@ -54,14 +57,17 @@ export async function saveUser(_prev: FormState, formData: FormData): Promise<Fo
 
   const errors: Record<string, string> = {};
   if (!isRole(role)) errors.role = t("users.roleRequired");
-  if (password && (password.length < MIN_PASSWORD_LENGTH || password.length > MAX_PASSWORD_LENGTH)) {
-    errors.password = t("users.passwordRule", { n: MIN_PASSWORD_LENGTH });
-  }
   if (Object.keys(errors).length > 0 || !isRole(role)) return invalid(errors);
 
   const db = getAuthClient();
   const user = Number.isInteger(id) ? await db.user.findUnique({ where: { id } }) : null;
   if (!user) return { status: "error", message: t("users.notFound") };
+
+  if (password) {
+    const problem = password.length > MAX_PASSWORD_LENGTH ? "short" : passwordProblem(password, [user.username, user.name]);
+    if (problem === "short") return invalid({ password: t("users.passwordRule", { n: MIN_PASSWORD_LENGTH }) });
+    if (problem === "weak") return invalid({ password: t("users.passwordWeak") });
+  }
 
   // An owner can't lock themselves out, and the farm always keeps an owner.
   const losesOwner = user.role === "owner" && user.active && (role !== "owner" || !active);
@@ -71,10 +77,19 @@ export async function saveUser(_prev: FormState, formData: FormData): Promise<Fo
     if (others === 0) return { status: "error", message: t("users.lastOwner") };
   }
 
-  await db.user.update({
+  // A new password or a deactivation ends that person's existing sessions.
+  const revoke = password !== "" || (user.active && !active);
+  const updated = await db.user.update({
     where: { id: user.id },
-    data: { role, active, ...(password ? { passwordHash: await hashPassword(password) } : {}) },
+    data: {
+      role,
+      active,
+      ...(password ? { passwordHash: await hashPassword(password) } : {}),
+      ...(revoke ? { sessionVersion: { increment: 1 } } : {}),
+    },
   });
+  // Changing your own password shouldn't sign you out of the screen you're on.
+  if (revoke && updated.id === me.userId) await startSession(updated);
   revalidatePath("/settings");
   return { status: "success", message: t("form.saved") };
 }

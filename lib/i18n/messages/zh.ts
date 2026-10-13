@@ -816,6 +816,8 @@ export const zh: Messages = {
   "users.nameRequired": "请输入姓名。",
   "users.usernameRule": "3–30 个字符：小写字母、数字、点、短横线或下划线。",
   "users.passwordRule": "至少 {n} 个字符。",
+  "users.passwordWeak": "太容易被猜到。请避免常见密码以及自己的姓名或用户名。",
+  "users.signOutEverywhere": "退出所有设备",
   "users.usernameTaken": "该用户名已被使用。",
   "users.roleRequired": "请选择角色。",
   "users.created": "{name} 现在可以登录了。",

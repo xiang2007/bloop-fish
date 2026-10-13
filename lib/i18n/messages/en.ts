@@ -805,6 +805,8 @@ export const en = {
   "users.nameRequired": "Enter a name.",
   "users.usernameRule": "3–30 characters: lowercase letters, digits, dot, dash or underscore.",
   "users.passwordRule": "At least {n} characters.",
+  "users.passwordWeak": "Too easy to guess. Avoid common passwords and your own name or username.",
+  "users.signOutEverywhere": "Sign out of all devices",
   "users.usernameTaken": "That username is already taken.",
   "users.roleRequired": "Choose a role.",
   "users.created": "{name} can now sign in.",

@@ -6,6 +6,7 @@ import { getI18n } from "@/lib/i18n/server";
 import { getBoxKg } from "@/lib/settings";
 import { getAuthClient } from "@/lib/prisma";
 import { requireOwner } from "@/lib/session";
+import { signOutEverywhere } from "@/app/actions/session";
 import { BoxIcon, ChevronRightIcon, FeedIcon, FishIcon, MapIcon, UserIcon, WavesIcon } from "@/app/components/icons";
 import { Badge, Card, CardHeader, PageHeader } from "@/app/components/ui";
 import { BoxKgForm, FarmRow, FeedTypeRow, GradeRow, NewFarmForm, NewFeedTypeForm, NewGradeForm, NewPondForm, NewUserForm, UserRow } from "./SettingsForms";
@@ -183,6 +184,11 @@ export default async function SettingsPage() {
               </table>
             </div>
             <NewUserForm />
+            <form action={signOutEverywhere} className="border-t border-line px-5 py-3">
+              <button type="submit" className="text-sm font-medium text-ink-2 underline-offset-2 hover:underline">
+                {t("users.signOutEverywhere")}
+              </button>
+            </form>
           </Card>
         </div>
       </div>
