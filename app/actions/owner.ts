@@ -311,7 +311,7 @@ export async function importSpreadsheet(_prev: FormState, formData: FormData): P
   const session = await requireOwner();
   const { t } = await getI18n();
   // Parsing a sheet is the heaviest thing a request can ask for.
-  if (!allow(`import:${session.userId}`, 10, 10 * 60 * 1000)) {
+  if (!(await allow(`import:${session.userId}`, 10, 10 * 60 * 1000))) {
     return { status: "error", message: t("error.importRate") };
   }
   const file = formData.get("file");

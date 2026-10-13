@@ -45,7 +45,7 @@ function isWorkerPath(pathname: string) {
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (PUBLIC_PATHS.includes(pathname) || /\.[a-zA-Z0-9]+$/.test(pathname)) {
+  if (PUBLIC_PATHS.includes(pathname)) {
     return next(request);
   }
 
@@ -70,5 +70,7 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  // Static image files skip the proxy by name. Anything else, including a
+  // route whose path happens to end in an extension, goes through the checks.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)"],
 };

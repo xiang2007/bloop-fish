@@ -1,7 +1,7 @@
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { SESSION_COOKIE } from "./role";
-import { verifySessionToken, type Session } from "./auth";
+import { createSessionToken, sessionCookieOptions, verifySessionToken, type Session } from "./auth";
 import { getAuthClient } from "./prisma";
 
 export type { Session };
@@ -14,6 +14,8 @@ export const getSession = cache(async (): Promise<Session | null> => {
   if (!token) return null;
   const user = await getAuthClient().user.findUnique({ where: { id: token.userId } });
   if (!user || !user.active || (user.role !== "owner" && user.role !== "worker")) return null;
+  // A password reset, deactivation or "sign out everywhere" bumps the version and ends older cookies.
+  if (user.sessionVersion !== token.version) return null;
   return { userId: user.id, role: user.role, name: user.name };
 });
 
@@ -29,4 +31,14 @@ export async function requireOwner(): Promise<Session> {
   const session = await requireSession();
   if (session.role !== "owner") throw new Error("Only farm owners can do this");
   return session;
+}
+
+/** Issues the session cookie for an account, at its current sessionVersion. */
+export async function startSession(user: { id: number; role: string; name: string; sessionVersion: number }) {
+  if (user.role !== "owner" && user.role !== "worker") throw new Error("Unknown role");
+  (await cookies()).set(
+    SESSION_COOKIE,
+    createSessionToken({ userId: user.id, role: user.role, name: user.name, version: user.sessionVersion }),
+    sessionCookieOptions(),
+  );
 }
