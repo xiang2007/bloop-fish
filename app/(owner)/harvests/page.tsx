@@ -5,6 +5,7 @@ import { formatAbw, formatKg, formatNumber, formatPercent, formatRm } from "@/li
 import { averageFishKg, cultureDay, gradeMix, harvestTotals, topGrade } from "@/lib/harvest";
 import { getI18n } from "@/lib/i18n/server";
 import { getClosedCycles, getHarvestLog, getPondList } from "@/lib/queries";
+import Pager from "@/app/components/Pager";
 import BarChart, { type BarDatum } from "@/app/components/charts/BarChart";
 import { FcrValue } from "@/app/components/cycle";
 import { GradeMixBar, gradeColor } from "@/app/components/harvest";
@@ -20,6 +21,11 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 const MONTHS_SHOWN = 12;
+const PAGE_SIZE = 15;
+// Past this many ponds the chart stacks by farm, not a colour per pond.
+const MAX_SERIES = 8;
+
+const pageParam = (value: string | string[] | undefined) => Math.max(1, Math.floor(Number(typeof value === "string" ? value : 1)) || 1);
 // Above this many ponds the filter is a searchable picker instead of chips.
 const MAX_POND_CHIPS = 12;
 
@@ -45,39 +51,57 @@ export default async function HarvestsPage({ searchParams }: PageProps<"/harvest
   const thisYear = today.slice(0, 4);
   const yearKg = harvests.filter((harvest) => dateToDayKey(harvest.date).startsWith(thisYear)).reduce((sum, h) => sum + h.totalKg, 0);
 
-  // Monthly harvested weight, stacked by pond, for the last twelve months.
+  // Monthly harvested weight for the last twelve months, stacked by pond,
+  // or by farm once there are too many ponds for a colour each.
   const firstMonth = addMonths(today.slice(0, 7), -(MONTHS_SHOWN - 1));
   const pondIds = [...new Set(harvests.map((harvest) => harvest.pondId))];
-  const pondColor = (pondId: number) => `var(--series-${(pondIds.indexOf(pondId) % 8) + 1})`;
+  const byFarm = pondIds.length > MAX_SERIES;
+  const seriesOf = (harvest: (typeof harvests)[number]) =>
+    byFarm
+      ? { id: harvest.pond.farm?.id ?? 0, name: harvest.pond.farm?.name ?? t("farmMap.unassigned") }
+      : { id: harvest.pondId, name: harvest.pond.name };
+  const series = [...new Map(harvests.map((harvest) => [seriesOf(harvest).id, seriesOf(harvest)])).values()];
+  const seriesColor = (id: number) => `var(--series-${(series.findIndex((entry) => entry.id === id) % 8) + 1})`;
   const chart: BarDatum[] = Array.from({ length: MONTHS_SHOWN }, (_, index) => {
     const monthKey = addMonths(firstMonth, index);
     const inMonth = harvests.filter((harvest) => monthKeyOf(harvest.date) === monthKey);
+    const kgOf = (id: number) => inMonth.filter((harvest) => seriesOf(harvest).id === id).reduce((sum, harvest) => sum + harvest.totalKg, 0);
     return {
       key: monthKey,
       label: fmt.month(monthKey),
-      segments: pondIds.map((pondId) => ({
-        name: String(pondId),
-        value: inMonth.filter((harvest) => harvest.pondId === pondId).reduce((sum, harvest) => sum + harvest.totalKg, 0),
-        color: pondColor(pondId),
-      })),
+      segments: series.map((entry) => ({ name: entry.name, value: kgOf(entry.id), color: seriesColor(entry.id) })),
       tooltip: {
         title: fmt.month(monthKey, "long"),
         lines: inMonth.length
-          ? pondIds
-              .map((pondId) => ({
-                pondId,
-                kg: inMonth.filter((harvest) => harvest.pondId === pondId).reduce((sum, harvest) => sum + harvest.totalKg, 0),
-              }))
-              .filter((entry) => entry.kg > 0)
-              .map((entry) => ({
-                label: harvests.find((harvest) => harvest.pondId === entry.pondId)!.pond.name,
-                value: formatKg(entry.kg, 0),
-                color: pondColor(entry.pondId),
-              }))
+          ? series
+              .map((entry) => ({ entry, kg: kgOf(entry.id) }))
+              .filter(({ kg }) => kg > 0)
+              .map(({ entry, kg }) => ({ label: entry.name, value: formatKg(kg, 0), color: seriesColor(entry.id) }))
           : [{ label: t("harvests.noneInMonth"), value: "" }],
       },
     };
   });
+
+  // The two tables show one page at a time.
+  const page = Math.min(pageParam(query.page), Math.max(1, Math.ceil(harvests.length / PAGE_SIZE)));
+  const cyclePage = Math.min(pageParam(query.cpage), Math.max(1, Math.ceil(closedCycles.length / PAGE_SIZE)));
+  const pageHref = (key: "page" | "cpage") => (next: number) => {
+    const params = new URLSearchParams();
+    if (pondFilter) params.set("pond", String(pondFilter));
+    const other = key === "page" ? "cpage" : "page";
+    const otherValue = key === "page" ? cyclePage : page;
+    if (otherValue > 1) params.set(other, String(otherValue));
+    if (next > 1) params.set(key, String(next));
+    const qs = params.toString();
+    return qs ? `/harvests?${qs}` : "/harvests";
+  };
+  const pagerLabels = (current: number, total: number) => ({
+    prev: t("pager.prev"),
+    next: t("pager.next"),
+    range: `${(current - 1) * PAGE_SIZE + 1}–${Math.min(current * PAGE_SIZE, total)} / ${total}`,
+  });
+  const shownHarvests = harvests.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const shownCycles = closedCycles.slice((cyclePage - 1) * PAGE_SIZE, cyclePage * PAGE_SIZE);
 
   return (
     <>
@@ -195,13 +219,8 @@ export default async function HarvestsPage({ searchParams }: PageProps<"/harvest
             title={t("harvests.monthlyTitle")}
             description={t("harvests.monthlyDescription")}
             action={
-              pondIds.length > 1 ? (
-                <Legend
-                  items={pondIds.map((pondId) => ({
-                    label: harvests.find((harvest) => harvest.pondId === pondId)!.pond.name,
-                    color: pondColor(pondId),
-                  }))}
-                />
+              series.length > 1 ? (
+                <Legend items={series.map((entry) => ({ label: entry.name, color: seriesColor(entry.id) }))} />
               ) : undefined
             }
           />
@@ -261,7 +280,7 @@ export default async function HarvestsPage({ searchParams }: PageProps<"/harvest
                 </tr>
               </thead>
               <tbody>
-                {harvests.map((harvest) => {
+                {shownHarvests.map((harvest) => {
                   const day = harvest.stockedAt ? cultureDay(harvest.stockedAt, harvest.date) : null;
                   const avgFish = averageFishKg(harvest);
                   return (
@@ -305,6 +324,7 @@ export default async function HarvestsPage({ searchParams }: PageProps<"/harvest
             </table>
           </div>
         )}
+        <Pager page={page} pages={Math.ceil(harvests.length / PAGE_SIZE)} href={pageHref("page")} labels={pagerLabels(page, harvests.length)} />
       </Card>
 
       <Card>
@@ -326,7 +346,7 @@ export default async function HarvestsPage({ searchParams }: PageProps<"/harvest
                 </tr>
               </thead>
               <tbody>
-                {closedCycles.map((cycle) => {
+                {shownCycles.map((cycle) => {
                   const lost = cycle.outcome === "lost";
                   const fcr = cycle.harvestKg ? cycle.feedKg / cycle.harvestKg : null;
                   return (
@@ -357,6 +377,7 @@ export default async function HarvestsPage({ searchParams }: PageProps<"/harvest
             </table>
           </div>
         )}
+        <Pager page={cyclePage} pages={Math.ceil(closedCycles.length / PAGE_SIZE)} href={pageHref("cpage")} labels={pagerLabels(cyclePage, closedCycles.length)} />
       </Card>
     </>
   );
