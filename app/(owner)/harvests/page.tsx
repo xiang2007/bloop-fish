@@ -30,8 +30,12 @@ export default async function HarvestsPage({ searchParams }: PageProps<"/harvest
   const [allHarvests, ponds, cycles] = await Promise.all([getHarvestLog(), getPondList(), getClosedCycles()]);
 
   const pondFilter = typeof query.pond === "string" ? Number(query.pond) : null;
-  const harvests = pondFilter ? allHarvests.filter((harvest) => harvest.pondId === pondFilter) : allHarvests;
-  const closedCycles = pondFilter ? cycles.filter((cycle) => cycle.pondId === pondFilter) : cycles;
+  const farmFilter = typeof query.farm === "string" ? Number(query.farm) : null;
+  const farms = [...new Map(ponds.flatMap((pond) => (pond.farm ? [[pond.farm.id, pond.farm] as const] : []))).values()];
+  const farmPondIds = new Set(ponds.filter((pond) => farmFilter !== null && pond.farm?.id === farmFilter).map((pond) => pond.id));
+  const inFilter = (pondId: number) => (pondFilter ? pondId === pondFilter : farmFilter ? farmPondIds.has(pondId) : true);
+  const harvests = allHarvests.filter((harvest) => inFilter(harvest.pondId));
+  const closedCycles = cycles.filter((cycle) => inFilter(cycle.pondId));
 
   const totals = harvestTotals(harvests);
   const mix = gradeMix(harvests.flatMap((harvest) => harvest.lines));
@@ -84,16 +88,50 @@ export default async function HarvestsPage({ searchParams }: PageProps<"/harvest
       />
 
       {ponds.length > MAX_POND_CHIPS ? (
-        <PondPicker
-          ponds={ponds.map((pond) => ({
-            id: pond.id,
-            name: pond.name,
-            farm: pond.farm?.name ?? null,
-            count: allHarvests.filter((harvest) => harvest.pondId === pond.id).length,
-          }))}
-          total={allHarvests.length}
-          selected={pondFilter}
-        />
+        <div className="mb-6 space-y-3">
+          {farms.length > 1 && (
+            <nav aria-label={t("harvests.filterFarm")} className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+              <ul className="flex min-w-max gap-1.5">
+                {[{ id: null as number | null, name: t("harvests.allFarms") }, ...farms].map((farm) => {
+                  const active = farm.id === farmFilter;
+                  const count =
+                    farm.id === null
+                      ? allHarvests.length
+                      : allHarvests.filter((harvest) => ponds.find((pond) => pond.id === harvest.pondId)?.farm?.id === farm.id).length;
+                  return (
+                    <li key={farm.id ?? "all"}>
+                      <Link
+                        href={farm.id === null ? "/harvests" : `/harvests?farm=${farm.id}`}
+                        scroll={false}
+                        aria-current={active ? "true" : undefined}
+                        className={cx(
+                          "inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium",
+                          active ? "border-brand bg-brand-soft text-brand" : "border-line bg-surface text-ink-2 hover:border-line-strong",
+                        )}
+                      >
+                        {farm.name}
+                        <span className="tabular-nums text-ink-3">{count}</span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </nav>
+          )}
+          <PondPicker
+            ponds={ponds
+              .filter((pond) => farmFilter === null || pond.farm?.id === farmFilter)
+              .map((pond) => ({
+                id: pond.id,
+                name: pond.name,
+                farm: pond.farm?.name ?? null,
+                count: allHarvests.filter((harvest) => harvest.pondId === pond.id).length,
+              }))}
+            total={farmFilter === null ? allHarvests.length : allHarvests.filter((harvest) => farmPondIds.has(harvest.pondId)).length}
+            selected={pondFilter}
+            farm={farms.find((farm) => farm.id === farmFilter) ?? null}
+          />
+        </div>
       ) : (
         <nav aria-label={t("harvests.filterPond")} className="-mx-4 mb-6 overflow-x-auto px-4 sm:mx-0 sm:px-0">
           <ul className="flex min-w-max gap-1.5">
