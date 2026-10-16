@@ -10,7 +10,18 @@ export type PondOption = { id: number; name: string; farm: string | null; count:
 
 // Pond filter for farms with too many ponds for a row of chips: a button that
 // opens a searchable list.
-export default function PondPicker({ ponds, total, selected }: { ponds: PondOption[]; total: number; selected: number | null }) {
+export default function PondPicker({
+  ponds,
+  total,
+  selected,
+  farm,
+}: {
+  ponds: PondOption[];
+  total: number;
+  selected: number | null;
+  /** The farm the list is narrowed to, kept in the links. */
+  farm: { id: number; name: string } | null;
+}) {
   const { t } = useI18n();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -18,6 +29,7 @@ export default function PondPicker({ ponds, total, selected }: { ponds: PondOpti
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const allLabel = farm ? t("harvests.allPondsIn", { farm: farm.name }) : t("harvests.allPonds");
   const current = ponds.find((pond) => pond.id === selected) ?? null;
   // Ponds that have harvests come first, since those are the ones worth picking.
   const sorted = useMemo(() => [...ponds].sort((a, b) => Number(b.count > 0) - Number(a.count > 0)), [ponds]);
@@ -40,7 +52,10 @@ export default function PondPicker({ ponds, total, selected }: { ponds: PondOpti
   const choose = (id: number | null) => {
     setOpen(false);
     setQuery("");
-    router.push(id === null ? "/harvests" : `/harvests?pond=${id}`, { scroll: false });
+    const params = new URLSearchParams();
+    if (farm) params.set("farm", String(farm.id));
+    if (id !== null) params.set("pond", String(id));
+    router.push(params.size ? `/harvests?${params}` : "/harvests", { scroll: false });
   };
 
   return (
@@ -62,7 +77,7 @@ export default function PondPicker({ ponds, total, selected }: { ponds: PondOpti
         )}
       >
         <span className="min-w-0 flex-1 truncate">
-          {current ? current.name : t("harvests.allPonds")}
+          {current ? current.name : allLabel}
           {current?.farm && <span className="font-normal text-ink-3"> · {current.farm}</span>}
         </span>
         <span className="tabular-nums text-ink-3">{current ? current.count : total}</span>
@@ -85,12 +100,12 @@ export default function PondPicker({ ponds, total, selected }: { ponds: PondOpti
               }}
               placeholder={t("harvests.searchPonds")}
               aria-label={t("harvests.searchPonds")}
-              className="h-9 w-full rounded-md border border-line bg-surface-2 px-3 text-base sm:text-sm text-ink placeholder:text-ink-3 focus:border-brand focus:outline-none"
+              className="h-9 w-full rounded-md border border-line bg-surface-2 px-3 text-base text-ink placeholder:text-ink-3 sm:text-sm focus:border-brand focus:outline-none"
             />
           </div>
           <ul role="listbox" aria-label={t("harvests.filterPond")} className="max-h-72 overflow-y-auto overscroll-contain py-1">
             {!query.trim() && (
-              <Option active={selected === null} onSelect={() => choose(null)} label={t("harvests.allPonds")} count={total} />
+              <Option active={selected === null} onSelect={() => choose(null)} label={allLabel} count={total} />
             )}
             {matches.map((pond) => (
               <Option
@@ -98,7 +113,7 @@ export default function PondPicker({ ponds, total, selected }: { ponds: PondOpti
                 active={pond.id === selected}
                 onSelect={() => choose(pond.id)}
                 label={pond.name}
-                sub={pond.farm}
+                sub={farm ? null : pond.farm}
                 count={pond.count}
               />
             ))}
