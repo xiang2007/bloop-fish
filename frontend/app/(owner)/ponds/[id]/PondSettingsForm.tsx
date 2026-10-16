@@ -1,10 +1,11 @@
 "use client";
 
 import { useActionState } from "react";
-import { updatePond, updatePondSpecs } from "@/lib/actions";
+import { deletePond, updatePond, updatePondSpecs } from "@/lib/actions";
 import type { FormState } from "@/lib/actions";
+import ConfirmButton from "@/app/components/ConfirmButton";
 import { useI18n } from "@/app/components/I18nProvider";
-import { CheckCircleIcon } from "@/app/components/icons";
+import { CheckCircleIcon, TrashIcon } from "@/app/components/icons";
 import { Card, CardHeader, Field, buttonClass, cx, inputClass } from "@/app/components/ui";
 
 type Pond = {
@@ -165,6 +166,21 @@ export default function PondSettingsForm({
       </Card>
 
       <PondSpecsForm specs={specs} today={today} />
+
+      <Card className="xl:col-span-2">
+        <CardHeader title={t("pondSettings.dangerTitle")} description={t("pondSettings.dangerDescription")} />
+        <div className="p-5">
+          <ConfirmButton
+            action={deletePond}
+            fields={{ id: String(pond.id) }}
+            message={t("pondSettings.deleteConfirm", { name: pond.name })}
+            label={t("pondSettings.delete")}
+          >
+            <TrashIcon className="size-4" />
+            {t("pondSettings.delete")}
+          </ConfirmButton>
+        </div>
+      </Card>
     </div>
   );
 }

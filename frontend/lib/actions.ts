@@ -71,6 +71,10 @@ export const closeCycle = (_prev: FormState, formData: FormData) =>
   submit("POST", `/ponds/${text(formData, "pondId")}/cycle/loss`, toBody(formData));
 export const startCycle = (_prev: FormState, formData: FormData) =>
   submit("POST", `/ponds/${text(formData, "pondId")}/cycle/start`, toBody(formData));
+export const deletePond = async (formData: FormData) => {
+  await run("DELETE", `/ponds/${text(formData, "id")}`);
+  go("/");
+};
 export const reopenLastCycle = (formData: FormData) => run("POST", `/ponds/${text(formData, "pondId")}/cycle/reopen`);
 export const deleteHarvest = (formData: FormData) => run("DELETE", `/harvests/${text(formData, "id")}`);
 export const deleteSampling = (formData: FormData) => run("DELETE", `/samplings/${text(formData, "id")}`);

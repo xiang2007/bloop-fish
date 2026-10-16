@@ -10,6 +10,7 @@ import {
   closeCycle,
   createPond,
   deleteFarm,
+  deletePond,
   deleteHarvest,
   deleteImportBatch,
   deleteSampling,
@@ -61,6 +62,7 @@ writeRoutes.delete("/samplings/:id", async (c) => respond(c, await deleteSamplin
 writeRoutes.post("/ponds", async (c) => respond(c, await createPond(await fieldsOf(c))));
 writeRoutes.patch("/ponds/:id", async (c) => respond(c, await updatePond(await fieldsOf(c, { id: c.req.param("id") }))));
 writeRoutes.patch("/ponds/:id/specs", async (c) => respond(c, await updatePondSpecs(await fieldsOf(c, { id: c.req.param("id") }))));
+writeRoutes.delete("/ponds/:id", async (c) => respond(c, await deletePond(new Fields({ id: c.req.param("id") }))));
 writeRoutes.post("/ponds/:id/harvests", async (c) => respond(c, await recordHarvest(await fieldsOf(c, { pondId: c.req.param("id") }))));
 writeRoutes.post("/ponds/:id/cycle/loss", async (c) => respond(c, await closeCycle(await fieldsOf(c, { pondId: c.req.param("id") }))));
 writeRoutes.post("/ponds/:id/cycle/start", async (c) => respond(c, await startCycle(await fieldsOf(c, { pondId: c.req.param("id") }))));

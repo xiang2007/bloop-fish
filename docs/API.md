@@ -67,6 +67,7 @@ Each returns exactly what the matching screen needs, assembled in `backend/src/l
 | POST | `/api/ponds/:id/cycle/reopen` | owner | Undo the last close | |
 | POST / PATCH | `/api/farms`, `/api/farms/:id` | owner | Add / rename a farm | `name` |
 | DELETE | `/api/farms/:id` | owner | Delete a farm (its ponds stay) | |
+| DELETE | `/api/ponds/:id` | owner | Delete a pond and its cycles, logs, samplings, harvests and imports | |
 | POST / PATCH | `/api/size-grades`, `/api/size-grades/:id` | owner | Add / edit a size grade | `label, minKg, maxKg, sortOrder, active` |
 | POST / PATCH | `/api/feed-types`, `/api/feed-types/:id` | owner | Add / edit a feed | `code, packSizeKg, pricePerKg, active` |
 | PUT | `/api/settings/box-kg` | owner | Box weight | `boxKg` |
