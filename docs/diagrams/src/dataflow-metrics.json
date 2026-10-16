@@ -1,0 +1,181 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "From Records to Dashboard Numbers",
+    "output": "../dataflow-metrics.html",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1080,
+      520
+    ]
+  },
+  "stages": [
+    {
+      "label": "Stored"
+    },
+    {
+      "label": "Load"
+    },
+    {
+      "label": "Compute"
+    },
+    {
+      "label": "Judge"
+    },
+    {
+      "label": "Screens"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "rows",
+      "type": "database",
+      "label": "Records",
+      "sublabel": "daily logs, samplings",
+      "stage": 0,
+      "row": 1,
+      "tag": "raw"
+    },
+    {
+      "id": "stock",
+      "type": "database",
+      "label": "Stock moves",
+      "sublabel": "counts, deliveries",
+      "stage": 0,
+      "row": 2
+    },
+    {
+      "id": "queries",
+      "type": "backend",
+      "label": "lib/queries.ts",
+      "sublabel": "per-cycle filter",
+      "stage": 1,
+      "row": 1,
+      "tag": "scoped"
+    },
+    {
+      "id": "metrics",
+      "type": "backend",
+      "label": "computePondMetrics",
+      "sublabel": "FCR, biomass, survival",
+      "stage": 2,
+      "row": 0
+    },
+    {
+      "id": "levels",
+      "type": "backend",
+      "label": "computeStockLevels",
+      "sublabel": "on hand, days cover",
+      "stage": 2,
+      "row": 2
+    },
+    {
+      "id": "health",
+      "type": "security",
+      "label": "Health rules",
+      "sublabel": "health, timing, ready",
+      "stage": 3,
+      "row": 0,
+      "tag": "rules"
+    },
+    {
+      "id": "insights",
+      "type": "security",
+      "label": "buildInsights",
+      "sublabel": "alerts and tips",
+      "stage": 3,
+      "row": 1,
+      "tag": "alerts"
+    },
+    {
+      "id": "screens",
+      "type": "frontend",
+      "label": "Dashboard",
+      "sublabel": "overview, pond, map",
+      "stage": 4,
+      "row": 1
+    }
+  ],
+  "flows": [
+    {
+      "id": "load-rows",
+      "from": "rows",
+      "to": "queries",
+      "label": "per pond",
+      "variant": "emphasis",
+      "route": "straight"
+    },
+    {
+      "id": "to-metrics",
+      "from": "queries",
+      "to": "metrics",
+      "label": "cycle rows",
+      "variant": "emphasis"
+    },
+    {
+      "id": "stock-in",
+      "from": "stock",
+      "to": "levels",
+      "label": "movements",
+      "variant": "default"
+    },
+    {
+      "id": "to-health",
+      "from": "metrics",
+      "to": "health",
+      "label": "metrics",
+      "variant": "emphasis",
+      "route": "straight"
+    },
+    {
+      "id": "to-insights",
+      "from": "metrics",
+      "to": "insights",
+      "label": "per pond",
+      "variant": "default"
+    },
+    {
+      "id": "levels-insights",
+      "from": "levels",
+      "to": "insights",
+      "label": "low stock",
+      "variant": "dashed"
+    },
+    {
+      "id": "health-screens",
+      "from": "health",
+      "to": "screens",
+      "label": "badges",
+      "variant": "default"
+    },
+    {
+      "id": "insights-screens",
+      "from": "insights",
+      "to": "screens",
+      "label": "alerts",
+      "variant": "emphasis",
+      "route": "straight",
+      "labelDy": 28,
+      "labelDx": 0
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Nothing cached",
+      "items": [
+        "Every figure is derived per request",
+        "Pages are force-dynamic"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Cycle scoped",
+      "items": [
+        "Only the running cycle counts",
+        "Closed cycles keep a snapshot"
+      ]
+    }
+  ]
+}

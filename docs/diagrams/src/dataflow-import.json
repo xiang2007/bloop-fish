@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "Spreadsheet Import Pipeline",
+    "output": "../dataflow-import.html",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1080,
+      520
+    ]
+  },
+  "stages": [
+    {
+      "label": "Upload"
+    },
+    {
+      "label": "Parse"
+    },
+    {
+      "label": "Plan"
+    },
+    {
+      "label": "Persist"
+    },
+    {
+      "label": "Review"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "form",
+      "type": "frontend",
+      "label": "ImportForm",
+      "sublabel": "/import",
+      "stage": 0,
+      "row": 1,
+      "tag": "CSV"
+    },
+    {
+      "id": "parse",
+      "type": "backend",
+      "label": "parsePondReport",
+      "sublabel": "csv.ts",
+      "stage": 1,
+      "row": 1,
+      "tag": "findings"
+    },
+    {
+      "id": "plan",
+      "type": "backend",
+      "label": "buildImportPlan",
+      "sublabel": "price, reconcile",
+      "stage": 2,
+      "row": 1,
+      "tag": "plan"
+    },
+    {
+      "id": "commit",
+      "type": "backend",
+      "label": "commitImportPlan",
+      "sublabel": "one transaction",
+      "stage": 3,
+      "row": 0,
+      "tag": "atomic"
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "PostgreSQL",
+      "sublabel": "logs, samplings, batch",
+      "stage": 3,
+      "row": 2
+    },
+    {
+      "id": "data",
+      "type": "frontend",
+      "label": "Data tab",
+      "sublabel": "findings, rollback",
+      "stage": 4,
+      "row": 1,
+      "tag": "owner"
+    }
+  ],
+  "flows": [
+    {
+      "id": "upload",
+      "from": "form",
+      "to": "parse",
+      "label": "csv text",
+      "classification": "importSpreadsheet",
+      "variant": "emphasis"
+    },
+    {
+      "id": "parsed",
+      "from": "parse",
+      "to": "plan",
+      "label": "parsed months",
+      "classification": "typed",
+      "variant": "emphasis"
+    },
+    {
+      "id": "planned",
+      "from": "plan",
+      "to": "commit",
+      "label": "ImportPlan",
+      "classification": "rows + findings",
+      "variant": "emphasis"
+    },
+    {
+      "id": "write",
+      "from": "commit",
+      "to": "db",
+      "label": "replace import rows",
+      "classification": "keeps app rows",
+      "variant": "security",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "straight",
+      "labelDy": 24
+    },
+    {
+      "id": "review",
+      "from": "db",
+      "to": "data",
+      "label": "batch findings",
+      "classification": "JSON",
+      "variant": "default"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "amber",
+      "title": "Reconciliation",
+      "items": [
+        "Sheet totals cross-checked",
+        "Mismatches saved as findings"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Safe re-import",
+      "items": [
+        "App-entered days are kept",
+        "Delete batch to roll back"
+      ]
+    }
+  ]
+}

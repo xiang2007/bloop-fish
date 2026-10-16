@@ -18,8 +18,8 @@
 /coverage
 
 # next.js
-/.next/
-/out/
+.next/
+out/
 
 # production
 /build
@@ -48,12 +48,11 @@ next-env.d.ts
 # prisma / sqlite
 *.db
 *.db-journal
-prisma/dev.db
+backend/prisma/dev.db
 
-/app/generated/prisma
+/backend/src/generated
 
-# generated Prisma client
-/app/generated
+*.tsbuildinfo
 
 # local agent worktrees (full copies of the repo)
 /.claude/worktrees/

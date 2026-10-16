@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fisheye PRD</title>
+<style>
+:root{--bg:#fff;--fg:#1a2230;--mute:#5b6676;--line:#dde2ea;--accent:#0b6e8a;--tint:#f3f6fa;--warn:#fff7e0}
+@media (prefers-color-scheme:dark){:root{--bg:#10151c;--fg:#e6ebf2;--mute:#9aa6b6;--line:#2a3340;--accent:#5cc3df;--tint:#18202b;--warn:#2b2614}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,sans-serif}
+main{max-width:860px;margin:0 auto;padding:32px 16px 80px}
+h1{font-size:2rem;margin:0 0 4px}h2{margin:2.4em 0 .5em;padding-top:.6em;border-top:1px solid var(--line);font-size:1.35rem}h3{margin:1.4em 0 .4em;font-size:1.05rem}
+.sub{color:var(--mute);margin:0 0 12px}.meta{font-size:.85rem;color:var(--mute);background:var(--tint);padding:10px 14px;border-radius:8px}
+table{width:100%;border-collapse:collapse;font-size:.92rem;margin:.6em 0}th,td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:top}th{background:var(--tint)}
+td:first-child{white-space:nowrap;font-weight:600;color:var(--accent)}
+.tw{overflow-x:auto}
+figure{margin:1.2em 0}iframe{width:100%;height:560px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+figcaption{font-size:.88rem;color:var(--mute);margin-top:6px}
+.as{background:var(--warn);padding:1px 5px;border-radius:4px;font-size:.85em}
+code{background:var(--tint);padding:1px 5px;border-radius:4px;font-size:.9em}
+a{color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+<h1>Fisheye: Product Requirements</h1>
+<p class="sub">A phone-first pond logbook for workers and a decision dashboard for owners, replacing the farm's monthly feed and mortality spreadsheets.</p>
+<p class="meta">Date: 2026-10-05 · Type: retroactive PRD, written from the codebase at <code>8fc03be</code> · Format: HTML (embeds diagrams) · Supersedes: none · Detail lives in <a href="ARCHITECTURE.md">ARCHITECTURE.md</a> and <a href="database.md">database.md</a>. Items tagged <span class="as">[ASSUMPTION]</span> are not confirmed by the repo or the README.</p>
+
+<h2>1. Problem statement</h2>
+<p>The farm tracks each pond in a spreadsheet: daily feed type and bags, dead fish, monthly cost tables and an average-weight summary (README, "Overview"). The sheet is hand-totalled, so it carries errors the app has already met in the sample data: mislabelled month headings, a cost table copied from the previous month, and bags costed at the wrong pack size (README, "Spreadsheet import"). Owners cannot see across ponds, cannot tell when a pond is ready to harvest, and cannot tell whether feed will run out. Workers do the data entry on Android phones, where a spreadsheet is a poor fit.</p>
+<p>Initial scope is 7 ponds and about 10,000 kg of fish. The long-term goal is AI-assisted recommendations, starting with feed. That depends on clean, structured history first.</p>
+
+<h2>2. Goals and non-goals</h2>
+<h3>Goals</h3>
+<ul>
+<li>G1. A worker records one pond's day (feed, bags, dead fish) on a phone in a single screen.</li>
+<li>G2. The owner sees stock, feed cost, growth, FCR, survival and harvest readiness for every pond without opening a spreadsheet.</li>
+<li>G3. The owner is warned about problems (logging gaps, mortality spikes, sampling due, low feed, poor water) by explicit rules.</li>
+<li>G4. Existing spreadsheet history is imported and reconciled, not retyped.</li>
+<li>G5. Cost history stays true: later price changes never rewrite past records.</li>
+</ul>
+<h3>Non-goals (v1)</h3>
+<ul>
+<li>Predictive or AI feed recommendations (the README keeps this as a later phase; today's insights are plain rules).</li>
+<li>Real authentication (see risk R1).</li>
+<li>A native mobile app, offline mode, water-quality sensor integration, payroll or sales and revenue tracking.</li>
+</ul>
+
+<h2>3. Users and stories</h2>
+<table><tr><th>Who</th><th>Story</th></tr>
+<tr><td>Worker</td><td>As a worker on an Android phone, I pick a pond from today's checklist, enter feed type, bags and dead fish, and save, so the owner has today's numbers without me touching a spreadsheet.</td></tr>
+<tr><td>Worker</td><td>As a worker, I weigh a sample of fish and enter fish count and total weight, so the pond's average weight stays current.</td></tr>
+<tr><td>Worker</td><td>As a worker, I correct a mistake I made earlier this week, but cannot rewrite old history.</td></tr>
+<tr><td>Owner</td><td>As the owner, I open the overview and see which ponds are ready to harvest, which need attention, and this month's feed cost against last month's.</td></tr>
+<tr><td>Owner</td><td>As the owner, I record a partial or final harvest by size grade, so cycle results and harvest totals are real figures.</td></tr>
+<tr><td>Owner</td><td>As the owner, I record a stocktake or a delivery and see days of feed cover per feed type.</td></tr>
+<tr><td>Owner</td><td>As the owner, I upload the old Pond report CSV and see what did not add up before I trust it, and I can roll the import back.</td></tr>
+</table>
+
+<h2>4. Requirements</h2>
+<p>Each requirement names the current behaviour so it can be tested. IDs are referenced in the figures below.</p>
+
+<h3>Must-have (v1: built and in the product)</h3>
+<div class="tw"><table><tr><th>ID</th><th>Requirement and acceptance test</th></tr>
+<tr><td>M1</td><td><b>Role split.</b> A visitor chooses Farm owner or Farm worker. A worker is redirected to <code>/log</code> from every other path. Every owner-only action rejects a worker with "Only farm owners can do this", even when posted directly.</td></tr>
+<tr><td>M2</td><td><b>Daily log.</b> One record per pond per day (feed type, bags, dead fish, note). Saving the same pond and day again updates the record. Bags 0 to 200; dead fish a whole number 0 to 100,000; bags need a feed type; date not in the future.</td></tr>
+<tr><td>M3</td><td><b>Worker edit window.</b> A worker can save or delete only records within the last 7 days, and delete only their own app entries. The owner can edit any date.</td></tr>
+<tr><td>M4</td><td><b>Cost snapshot.</b> On save, <code>feedKg = bags × pack size</code> and <code>feedCostRm = feedKg × price</code> at that moment. Changing a feed price afterwards leaves existing records unchanged.</td></tr>
+<tr><td>M5</td><td><b>Sampling.</b> Enter 1 to 10,000 fish and 0 to 10,000 kg; average weight is stored as total ÷ count.</td></tr>
+<tr><td>M6</td><td><b>Pond metrics, per running cycle only.</b> Estimated biomass (feed ÷ assumed FCR), survival, realized FCR, daily gain, feed cost per kg, 7-day feed rate and monthly rows. Records from earlier cycles never enter the running totals.</td></tr>
+<tr><td>M7</td><td><b>Cycle lifecycle.</b> States unset, growing, ready, empty. Stage by quarter of the planned cycle (default 8 months): nursery, juvenile, growout, finishing. Restock only an empty pond; closing and reopening are transactional.</td></tr>
+<tr><td>M8</td><td><b>Harvest.</b> Partial harvests with size-grade lines or boxes × box weight (default 500 kg). A harvest flagged final closes the cycle with a totals snapshot. Total loss closes it as "lost" with a required cause. The last closed cycle can be reopened.</td></tr>
+<tr><td>M9</td><td><b>Health and alerts.</b> Per-pond checks (survival, mortality spike, FCR, growth, logging gap, sampling age, water) and an owner alert list with critical, warning and info levels. Thresholds are those in ARCHITECTURE §9.3 and §9.4.</td></tr>
+<tr><td>M10</td><td><b>Feed stock.</b> On hand = last stocktake + deliveries − bags logged since. With no stocktake the balance shows as unknown, not zero. Days of cover use the 14-day average. Warning under 7 days, critical under 3.</td></tr>
+<tr><td>M11</td><td><b>Spreadsheet import.</b> Parse the Pond report CSV (up to 900 KB), reconcile against the sheet's own totals, list findings, skip dates already entered in the app, and allow whole-batch rollback.</td></tr>
+<tr><td>M12</td><td><b>Owner dashboards.</b> Overview, farm map, pond page (overview, cycle, records, data, settings tabs), harvests, inventory, settings, and a per-pond CSV export.</td></tr>
+<tr><td>M13</td><td><b>Languages.</b> English, Chinese and Malay for all screens, switchable per browser.</td></tr>
+<tr><td>M14</td><td><b>Day correctness.</b> Calendar days are keyed in <code>Asia/Kuala_Lumpur</code> so a record never moves to another day.</td></tr>
+</table></div>
+
+<h3>Should-have (fast follow)</h3>
+<ul>
+<li>S1. Real sign-in with per-person accounts, replacing the role cookie (closes R1).</li>
+<li>S2. Month report screen: <code>lib/monthReport.ts</code> and <code>ReportPicker</code> exist but are not mounted on any page.</li>
+<li>S3. Move <code>import_batches.summary/findings</code> from JSON strings to <code>jsonb</code>.</li>
+<li>S4. Fix <code>.env.example</code>, which still shows a SQLite URL; the app needs PostgreSQL.</li>
+</ul>
+
+<h3>Won't-have in this version</h3>
+<ul>
+<li>AI feed recommendations. Rules remain the only decision support until at least one full cycle of clean data exists <span class="as">[ASSUMPTION]</span>.</li>
+<li>Offline entry, push notifications, native app.</li>
+<li>Multi-tenant (several unrelated farm businesses in one deployment). The 100-pond scenario is a demo of scale for one owner.</li>
+</ul>
+
+<h2>5. Flows</h2>
+
+<figure>
+<iframe src="2026-10-05-fisheye-product-requirements-worker-log.html" title="Worker saves a daily log" loading="lazy"></iframe>
+<figcaption><b>Figure 1: Worker saves a daily log.</b> Covers M1 to M4 and M14. The role check and validation both run on the server in the Server Action, not only in the form, and the cost snapshot is taken at save. <a href="2026-10-05-fisheye-product-requirements-worker-log.html" target="_blank" rel="noopener">Open full screen ↗</a></figcaption>
+</figure>
+
+<figure>
+<iframe src="2026-10-05-fisheye-product-requirements-dataflow.html" title="From records to dashboard numbers" loading="lazy"></iframe>
+<figcaption><b>Figure 2: Records to dashboard numbers.</b> Covers M6, M9, M10 and M12. Only stored rows persist; every figure is recomputed on each request and nothing is cached. <a href="2026-10-05-fisheye-product-requirements-dataflow.html" target="_blank" rel="noopener">Open full screen ↗</a></figcaption>
+</figure>
+
+<figure>
+<iframe src="2026-10-05-fisheye-product-requirements-lifecycle.html" title="Pond culture cycle lifecycle" loading="lazy"></iframe>
+<figcaption><b>Figure 3: Pond culture cycle lifecycle.</b> Covers M7 and M8. Closing happens only through a final harvest or a total-loss record, and reopening is allowed only on an empty pond. <a href="2026-10-05-fisheye-product-requirements-lifecycle.html" target="_blank" rel="noopener">Open full screen ↗</a></figcaption>
+</figure>
+
+<h2>6. Success metrics</h2>
+<p>The repo has no analytics. Targets below are proposals to confirm with the owner <span class="as">[ASSUMPTION]</span>.</p>
+<table><tr><th>Metric</th><th>Target</th></tr>
+<tr><td>Logging coverage</td><td>At least 95% of active pond-days have a daily record within 1 day (the health check already flags gaps over 1 day)</td></tr>
+<tr><td>Time to log</td><td>A pond's daily entry in under 30 seconds on a phone</td></tr>
+<tr><td>Spreadsheet retired</td><td>Zero spreadsheet entries for any pond after its first full month in the app</td></tr>
+<tr><td>Cost accuracy</td><td>Monthly feed cost in the app within 2% of the supplier invoices</td></tr>
+<tr><td>Stock-outs</td><td>Zero unplanned feed stock-outs; every "under 7 days cover" warning acted on before cover reaches 3 days</td></tr>
+<tr><td>Harvest planning</td><td>Every harvest recorded within 1 day of the event, with size-grade lines</td></tr>
+</table>
+
+<h2>7. Open questions and risks</h2>
+<table><tr><th>ID</th><th>Item</th></tr>
+<tr><td>R1</td><td><b>No real authentication.</b> The role is a cookie chosen on <code>/select-role</code>; anyone who can reach the site can become owner. Acceptable only while the URL is private. Blocks any use with sensitive data. See S1.</td></tr>
+<tr><td>R2</td><td><b>Estimates depend on assumed FCR.</b> Harvestable kg uses <code>assumedFcr</code> (default 1.35). A wrong value skews biomass and cost per kg until sampling data corrects it. Who owns this value per pond?</td></tr>
+<tr><td>R3</td><td>Survival, sampling biomass and realized FCR need <code>stockedCount</code>. Ponds without it show less, and an alert asks for it.</td></tr>
+<tr><td>R4</td><td>Pages recompute everything per request. Fine at 7 ponds; the 100-pond scenario exists to test this, but no performance target is defined.</td></tr>
+<tr><td>R5</td><td>Open: who is the single owner of thresholds (mortality spike, FCR margin, stock cover days)? They are fixed in code today.</td></tr>
+<tr><td>R6</td><td>Open: what data volume and quality is needed before AI recommendations are credible?</td></tr>
+</table>
+
+<h2>8. Appendix</h2>
+<ul>
+<li><a href="ARCHITECTURE.md">docs/ARCHITECTURE.md</a>: stack, routes, actions, rules engines, known gaps.</li>
+<li><a href="database.md">docs/database.md</a>: ER diagram. Schema in <code>prisma/schema.prisma</code>.</li>
+<li><code>README.md</code>: purpose, context (7 ponds, about 10,000 kg, Android first), phase plan.</li>
+<li>Figures were generated with the Archify skill from the sources in <code>docs/diagrams/src/</code> (<code>seq-worker-log</code>, <code>dataflow-metrics</code>, <code>lifecycle-cycle</code>) and passed <code>--quality showcase</code> delivery on 2026-10-05.</li>
+</ul>
+</main>
+</body>
+</html>

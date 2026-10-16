@@ -1,0 +1,243 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Fisheye System Architecture",
+    "output": "../architecture.html",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    {
+      "id": "owner",
+      "type": "external",
+      "label": "Farm owner",
+      "sublabel": "desktop / phone",
+      "pos": [
+        30,
+        150
+      ],
+      "size": [
+        130,
+        60
+      ]
+    },
+    {
+      "id": "worker",
+      "type": "external",
+      "label": "Farm worker",
+      "sublabel": "Android phone",
+      "pos": [
+        30,
+        370
+      ],
+      "size": [
+        130,
+        60
+      ]
+    },
+    {
+      "id": "proxy",
+      "type": "security",
+      "label": "proxy.ts",
+      "sublabel": "role cookie gate",
+      "tag": "redirects",
+      "pos": [
+        205,
+        260
+      ],
+      "size": [
+        140,
+        64
+      ]
+    },
+    {
+      "id": "pages",
+      "type": "frontend",
+      "label": "Pages (RSC)",
+      "sublabel": "app/(owner) + app/log",
+      "pos": [
+        395,
+        150
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "actions",
+      "type": "backend",
+      "label": "Server Actions",
+      "sublabel": "app/actions/*",
+      "tag": "requireOwner",
+      "pos": [
+        395,
+        370
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "domain",
+      "type": "backend",
+      "label": "Domain logic",
+      "sublabel": "queries, metrics, health",
+      "pos": [
+        595,
+        150
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "import",
+      "type": "backend",
+      "label": "CSV import",
+      "sublabel": "parse, plan, commit",
+      "pos": [
+        595,
+        370
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "prisma",
+      "type": "backend",
+      "label": "lib/prisma.ts",
+      "sublabel": "scenario-aware client",
+      "pos": [
+        800,
+        260
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "PostgreSQL",
+      "sublabel": "public schema (real farm)",
+      "pos": [
+        985,
+        150
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "demo",
+      "type": "database",
+      "label": "scenario_100",
+      "sublabel": "demo schema, 100 ponds",
+      "pos": [
+        985,
+        370
+      ],
+      "size": [
+        150,
+        64
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "owner-proxy",
+      "from": "owner",
+      "to": "proxy",
+      "label": "HTTPS"
+    },
+    {
+      "id": "worker-proxy",
+      "from": "worker",
+      "to": "proxy",
+      "label": "HTTPS"
+    },
+    {
+      "id": "proxy-pages",
+      "from": "proxy",
+      "to": "pages",
+      "label": "GET"
+    },
+    {
+      "id": "proxy-actions",
+      "from": "proxy",
+      "to": "actions",
+      "label": "form POST"
+    },
+    {
+      "id": "pages-domain",
+      "from": "pages",
+      "to": "domain",
+      "label": "read"
+    },
+    {
+      "id": "actions-import",
+      "from": "actions",
+      "to": "import",
+      "label": "CSV file"
+    },
+    {
+      "id": "domain-prisma",
+      "from": "domain",
+      "to": "prisma",
+      "label": "queries"
+    },
+    {
+      "id": "import-prisma",
+      "from": "import",
+      "to": "prisma",
+      "label": "transaction"
+    },
+    {
+      "id": "prisma-db",
+      "from": "prisma",
+      "to": "db",
+      "label": "default"
+    },
+    {
+      "id": "prisma-demo",
+      "from": "prisma",
+      "to": "demo",
+      "label": "cookie large",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "Access",
+      "items": [
+        "Cookie fisheye_role = owner or worker",
+        "Workers confined to /log",
+        "Actions re-check the role themselves"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Reads",
+      "items": [
+        "Pages call lib/queries on every request",
+        "Metrics and health are computed, not stored"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Writes",
+      "items": [
+        "Server Actions validate, write, revalidate",
+        "One pg Pool is shared by both schemas"
+      ]
+    }
+  ]
+}

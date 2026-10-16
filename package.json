@@ -1,38 +1,15 @@
 {
   "name": "project-fisheye",
-  "version": "0.1.0",
   "private": true,
+  "workspaces": ["shared", "backend", "frontend"],
   "scripts": {
-    "dev": "next dev",
-    "build": "prisma generate && prisma migrate deploy && next build",
-    "start": "next start",
-    "lint": "eslint",
-    "db:mock": "tsx prisma/mock.ts",
-    "db:scenario": "tsx prisma/scenario.ts",
-    "user:create": "tsx prisma/create-user.ts"
-  },
-  "dependencies": {
-    "@prisma/adapter-pg": "^7.10.0",
-    "@prisma/client": "^7.10.0",
-    "motion": "^12.43.0",
-    "next": "^16.4.0",
-    "pg": "^8.23.0",
-    "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "dev": "concurrently -n api,web -c blue,green \"npm run dev -w backend\" \"npm run dev -w frontend\"",
+    "build": "npm run build -w backend && npm run build -w frontend",
+    "lint": "npm run lint -w frontend",
+    "typecheck": "npm run typecheck -w backend && npm run typecheck -w frontend"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/pg": "^8.23.1",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "dotenv": "^18.0.3",
-    "eslint": "^9",
-    "eslint-config-next": "16.3.6",
-    "prisma": "^7.10.0",
-    "tailwindcss": "^4",
-    "tsx": "^4.23.15",
-    "typescript": "^5"
+    "concurrently": "^9.1.0"
   },
   "allowScripts": {
     "@prisma/engines@7.10.0": true,

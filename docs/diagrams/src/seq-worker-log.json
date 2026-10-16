@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": { "title": "Worker Saves a Daily Log", "output": "../seq-worker-log.html", "quality_profile": "showcase", "viewBox": [820, 760] },
+  "participants": [
+    { "id": "worker", "type": "external", "label": "Worker", "sublabel": "Android phone" },
+    { "id": "proxy", "type": "security", "label": "proxy.ts", "sublabel": "role gate" },
+    { "id": "page", "type": "frontend", "label": "/log/[pondId]", "sublabel": "page + form" },
+    { "id": "action", "type": "backend", "label": "saveDailyLog", "sublabel": "server action" },
+    { "id": "db", "type": "database", "label": "PostgreSQL", "sublabel": "daily_logs" }
+  ],
+  "messages": [
+    { "from": "worker", "to": "proxy", "y": 190, "label": "GET /log/12?date=today", "variant": "emphasis" },
+    { "from": "proxy", "to": "page", "y": 234, "label": "role cookie valid", "variant": "default" },
+    { "from": "page", "to": "db", "y": 278, "label": "pond, feed types, today's row", "variant": "default" },
+    { "from": "db", "to": "page", "y": 322, "label": "rows", "variant": "return" },
+    { "from": "page", "to": "worker", "y": 366, "label": "pre-filled form (HTML)", "variant": "return" },
+    { "from": "worker", "to": "action", "y": 430, "label": "submit FormData", "variant": "emphasis" },
+    { "from": "action", "to": "db", "y": 474, "label": "load pond + feed type", "variant": "default" },
+    { "from": "action", "to": "db", "y": 518, "label": "upsert (pondId, date)", "variant": "emphasis" },
+    { "from": "action", "to": "worker", "y": 562, "label": "redirect /log?saved=12", "variant": "return" },
+    { "from": "action", "to": "worker", "y": 606, "label": "FormState with fieldErrors", "variant": "dashed" }
+  ],
+  "activations": [
+    { "participant": "proxy", "from": 184, "to": 240, "type": "security" },
+    { "participant": "page", "from": 228, "to": 372, "type": "frontend" },
+    { "participant": "db", "from": 272, "to": 328, "type": "database" },
+    { "participant": "action", "from": 424, "to": 612, "type": "backend" },
+    { "participant": "db", "from": 468, "to": 524, "type": "database" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Validation", "items": ["Date not future; worker window 7 days", "0-200 bags, whole dead fish", "Bags need a feed type"] },
+    { "dot": "emerald", "title": "Snapshots", "items": ["feedKg = bags x pack size", "feedCostRm = feedKg x price now", "Saving twice updates the same day"] }
+  ]
+}
