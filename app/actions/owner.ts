@@ -185,6 +185,14 @@ export async function deleteFarm(formData: FormData) {
   revalidatePath("/", "layout");
 }
 
+export async function deletePond(formData: FormData) {
+  await requireOwner();
+  // Its cycles, daily logs, samplings, harvests and imports go with it.
+  await prisma.pond.delete({ where: { id: Number(formData.get("id")) } });
+  revalidatePath("/", "layout");
+  redirect("/");
+}
+
 export async function saveSizeGrade(_prev: FormState, formData: FormData): Promise<FormState> {
   await requireOwner();
   const { t } = await getI18n();
