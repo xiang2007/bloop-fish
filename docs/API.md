@@ -19,9 +19,12 @@ The backend (`backend/`, Hono on Node) serves everything under `/api`. The web a
 
 | Method | Path | Body | Result |
 |---|---|---|---|
-| GET | `/api/session` | | `{ session: { role, name } \| null }` |
-| POST | `/api/session` | `role`, `name?`, `next?` | Sets cookies. `{ redirect }` (workers always land under `/log`) |
+| GET | `/api/session` | | `{ session: { userId, role, name } \| null }` |
+| POST | `/api/session` | `username`, `password`, `next?` | Signs in with an account; sets the signed session cookie. `{ redirect }` (workers always land under `/log`). 401 `code: invalid` for a wrong login, 429 `code: locked` when throttled |
 | DELETE | `/api/session` | | Signs out. `{ redirect: "/select-role" }` |
+| DELETE | `/api/session/all` | | Signs out of every device (bumps the account's `sessionVersion`) |
+| POST | `/api/users` | `name`, `username`, `password`, `role` | Owner only: add an account |
+| PATCH | `/api/users/:id` | `role`, `active`, `password?` | Owner only: change role, deactivate, reset password |
 | PUT | `/api/locale` | `locale` | Sets the language cookie |
 | PUT | `/api/scenario` | `scenario` | Switches real farm / 100-pond demo |
 | GET | `/api/health` | | `{ ok: true }` |

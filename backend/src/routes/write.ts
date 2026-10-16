@@ -1,6 +1,10 @@
 import { Hono, type Context } from "hono";
 import type { ActionResult } from "@fisheye/shared/forms";
+import { setCookie } from "hono/cookie";
+import { SESSION_COOKIE } from "@fisheye/shared/role";
+import { createSessionToken, sessionCookieOptions } from "../lib/auth";
 import { Fields } from "../lib/http";
+import { createUser, saveUser } from "../lib/actions/users";
 import { deleteDailyLog, saveDailyLog, saveSampling } from "../lib/actions/logs";
 import {
   closeCycle,
@@ -72,6 +76,23 @@ writeRoutes.patch("/size-grades/:id", async (c) => respond(c, await saveSizeGrad
 writeRoutes.post("/feed-types", async (c) => respond(c, await saveFeedType(await fieldsOf(c))));
 writeRoutes.patch("/feed-types/:id", async (c) => respond(c, await saveFeedType(await fieldsOf(c, { id: c.req.param("id") }))));
 writeRoutes.put("/settings/box-kg", async (c) => respond(c, await saveBoxKg(await fieldsOf(c))));
+
+// Accounts (owner)
+writeRoutes.post("/users", async (c) => respond(c, await createUser(await fieldsOf(c))));
+writeRoutes.patch("/users/:id", async (c) =>
+  respond(
+    c,
+    await saveUser(await fieldsOf(c, { id: c.req.param("id") }), (user) => {
+      const role = user.role === "owner" ? "owner" : "worker";
+      setCookie(
+        c,
+        SESSION_COOKIE,
+        createSessionToken({ userId: user.id, role, name: user.name, version: user.sessionVersion }),
+        sessionCookieOptions(),
+      );
+    }),
+  ),
+);
 
 // Feed stock (owner)
 writeRoutes.post("/stock-movements", async (c) => respond(c, await recordStockMovement(await fieldsOf(c))));

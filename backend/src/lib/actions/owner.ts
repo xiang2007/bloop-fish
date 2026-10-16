@@ -6,6 +6,8 @@ import { getI18n } from "../i18n";
 import { PondReportError, normalizeFeedCode, parsePondReport } from "@fisheye/shared/import/pondReport";
 import { buildImportPlan } from "@fisheye/shared/import/plan";
 import { commitImportPlan } from "../import/commit";
+import { checkCsvFile, decodeCsv } from "@fisheye/shared/import/validate";
+import { allow } from "../rateLimit";
 import { getBoxKg } from "../settings";
 import type { ActionResult, FormState } from "@fisheye/shared/forms";
 import type { Fields } from "../http";
@@ -292,8 +294,12 @@ export async function deleteImportBatch(formData: Fields) {
 }
 
 export async function importSpreadsheet(formData: Fields, file: File | null): Promise<ActionResult> {
-  await requireOwner();
+  const session = await requireOwner();
   const { t } = await getI18n();
+  // Parsing a sheet is the heaviest thing a request can ask for.
+  if (!(await allow(`import:${session.userId}`, 10, 10 * 60 * 1000))) {
+    return { status: "error", message: t("error.importRate") };
+  }
   const target = text(formData, "target");
   const newPondName = text(formData, "newPondName", 40);
   const species = text(formData, "species", 60) || null;
@@ -303,6 +309,11 @@ export async function importSpreadsheet(formData: Fields, file: File | null): Pr
   }
   if (file.size > MAX_SHEET_BYTES) {
     return { status: "error", message: t("error.csvTooLarge") };
+  }
+  if (checkCsvFile(file)) return { status: "error", message: t("error.notCsv") };
+  const decoded = decodeCsv(new Uint8Array(await file.arrayBuffer()));
+  if ("rejected" in decoded) {
+    return { status: "error", message: t(decoded.rejected === "unsafe" ? "error.csvUnsafe" : "error.notCsv") };
   }
 
   const errors: Record<string, string> = {};
@@ -318,7 +329,7 @@ export async function importSpreadsheet(formData: Fields, file: File | null): Pr
 
   let plan;
   try {
-    const parsed = parsePondReport(await file.text());
+    const parsed = parsePondReport(decoded.text);
     plan = buildImportPlan(parsed, await prisma.feedType.findMany());
   } catch (error) {
     if (error instanceof PondReportError) return { status: "error", message: error.message };

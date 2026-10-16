@@ -53,3 +53,6 @@ backend/prisma/dev.db
 /backend/src/generated
 
 *.tsbuildinfo
+
+# local agent worktrees (full copies of the repo)
+/.claude/worktrees/

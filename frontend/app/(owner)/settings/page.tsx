@@ -5,9 +5,10 @@ import { dateToDayKey } from "@fisheye/shared/dates";
 import { useI18n } from "@/app/components/I18nProvider";
 import { Api, useTitle } from "@/app/components/Api";
 import type { settingsData } from "@backend/lib/pages";
-import { BoxIcon, ChevronRightIcon, FeedIcon, FishIcon, MapIcon, WavesIcon } from "@/app/components/icons";
+import { BoxIcon, ChevronRightIcon, FeedIcon, FishIcon, MapIcon, UserIcon, WavesIcon } from "@/app/components/icons";
+import { signOutEverywhere } from "@/lib/actions";
 import { Badge, Card, CardHeader, PageHeader } from "@/app/components/ui";
-import { BoxKgForm, FarmRow, FeedTypeRow, GradeRow, NewFarmForm, NewFeedTypeForm, NewGradeForm, NewPondForm } from "./SettingsForms";
+import { BoxKgForm, FarmRow, FeedTypeRow, GradeRow, NewFarmForm, NewFeedTypeForm, NewGradeForm, NewPondForm, NewUserForm, UserRow } from "./SettingsForms";
 
 type SettingsData = Awaited<ReturnType<typeof settingsData>>;
 
@@ -16,7 +17,7 @@ export default function SettingsPage() {
 }
 
 function Settings({ data }: { data: SettingsData }) {
-  const { ponds, feedTypes, farms, grades, boxKg } = data;
+  const { ponds, feedTypes, farms, grades, boxKg, users } = data;
   const { t, fmt } = useI18n();
   useTitle(t("nav.settings"));
 
@@ -138,6 +139,34 @@ function Settings({ data }: { data: SettingsData }) {
           <Card>
             <CardHeader icon={<BoxIcon className="size-4" />} title={t("settings.boxTitle")} description={t("settings.boxDescription")} />
             <BoxKgForm boxKg={boxKg} />
+          </Card>
+
+          <Card>
+            <CardHeader icon={<UserIcon className="size-4" />} title={t("users.title")} description={t("users.description")} />
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full min-w-[560px] text-sm">
+                <thead>
+                  <tr className="border-y border-line bg-surface-2 text-left text-xs text-ink-3">
+                    <th className="px-5 py-2.5 font-medium">{t("users.name")}</th>
+                    <th className="px-2 py-2.5 font-medium">{t("users.role")}</th>
+                    <th className="px-2 py-2.5 font-medium">{t("users.password")}</th>
+                    <th className="px-2 py-2.5 font-medium">{t("settings.active")}</th>
+                    <th className="px-5 py-2.5" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map((user) => (
+                    <UserRow key={user.id} user={user} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <NewUserForm />
+            <form action={signOutEverywhere} className="border-t border-line px-5 py-3">
+              <button type="submit" className="text-sm font-medium text-ink-2 underline-offset-2 hover:underline">
+                {t("users.signOutEverywhere")}
+              </button>
+            </form>
           </Card>
         </div>
       </div>

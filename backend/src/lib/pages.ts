@@ -1,6 +1,6 @@
 // What each screen of the web app needs, assembled from the database.
 // One function per screen, called by the GET routes in routes/read.ts.
-import { prisma } from "./prisma";
+import { getAuthClient, prisma } from "./prisma";
 import { addDays, dateToDayKey, dayKeyToDate, todayKey } from "@fisheye/shared/dates";
 import { suggestStocking } from "@fisheye/shared/cycle";
 import { getI18n } from "./i18n";
@@ -81,8 +81,8 @@ export async function inventoryData() {
   return { stock, movements };
 }
 
-export async function settingsData() {
-  const [ponds, feedTypes, farms, grades, boxKg] = await Promise.all([
+export async function settingsData(meId: number) {
+  const [ponds, feedTypes, farms, grades, boxKg, accounts] = await Promise.all([
     prisma.pond.findMany({
       orderBy: { id: "asc" },
       include: { _count: { select: { dailyLogs: true } }, farm: { select: { name: true } } },
@@ -91,8 +91,18 @@ export async function settingsData() {
     prisma.farm.findMany({ orderBy: { id: "asc" }, include: { _count: { select: { ponds: true } } } }),
     prisma.sizeGrade.findMany({ orderBy: [{ sortOrder: "asc" }, { id: "asc" }], include: { _count: { select: { lines: true } } } }),
     getBoxKg(),
+    getAuthClient().user.findMany({ orderBy: [{ role: "asc" }, { name: "asc" }] }),
   ]);
-  return { ponds, feedTypes, farms, grades, boxKg };
+  // Never send the password hash to the browser.
+  const users = accounts.map((user) => ({
+    id: user.id,
+    name: user.name,
+    username: user.username,
+    role: user.role === "owner" ? ("owner" as const) : ("worker" as const),
+    active: user.active,
+    isMe: user.id === meId,
+  }));
+  return { ponds, feedTypes, farms, grades, boxKg, users };
 }
 
 export async function importData() {

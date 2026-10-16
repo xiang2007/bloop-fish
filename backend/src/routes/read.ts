@@ -53,8 +53,8 @@ readRoutes.get("/inventory", async (c) => {
   return c.json(await inventoryData());
 });
 readRoutes.get("/settings", async (c) => {
-  await requireOwner();
-  return c.json(await settingsData());
+  const me = await requireOwner();
+  return c.json(await settingsData(me.userId));
 });
 readRoutes.get("/import", async (c) => {
   await requireOwner();

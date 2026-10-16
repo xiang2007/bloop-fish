@@ -5,6 +5,7 @@
 //   useActionState(saveFarm, …)  or  <form action={deleteFarm}>
 // Routes are listed in docs/API.md.
 import type { FormState } from "@fisheye/shared/forms";
+import { safePath } from "@fisheye/shared/redirect";
 import { go, invalidate, send } from "./api";
 
 export type { FormState };
@@ -89,12 +90,21 @@ export const deleteStockMovement = (formData: FormData) => run("DELETE", `/stock
 export const importSpreadsheet = (_prev: FormState, formData: FormData) => submit("POST", "/imports", formData);
 export const deleteImportBatch = (formData: FormData) => run("DELETE", `/imports/${text(formData, "id")}`);
 
+// --- Accounts (owner) --------------------------------------------------------
+export const createUser = (_prev: FormState, formData: FormData) => submit("POST", "/users", toBody(formData));
+export const saveUser = (_prev: FormState, formData: FormData) =>
+  submit("PATCH", `/users/${text(formData, "id")}`, toBody(formData));
+
 // --- Session, language, demo switch ------------------------------------------
-export async function signIn(formData: FormData) {
-  const reply = await send<{ redirect?: string; error?: string }>("POST", "/session", toBody(formData));
-  if (!reply.ok) throw new Error(reply.data?.error ?? "Choose a role to continue");
+// Signing in is a form on the sign-in screen, which shows its own error.
+export async function signIn(_prev: FormState & { code?: string }, formData: FormData): Promise<FormState & { code?: string }> {
+  const reply = await send<{ redirect?: string; error?: string; code?: string }>("POST", "/session", toBody(formData));
+  if (!reply.ok) {
+    return { status: "error", message: reply.data?.error ?? "Something went wrong", code: reply.data?.code };
+  }
   invalidate();
   go(reply.data.redirect ?? "/");
+  return { status: "success" };
 }
 
 export async function signOut() {
@@ -103,6 +113,12 @@ export async function signOut() {
   go(reply.data?.redirect ?? "/select-role");
 }
 
+// Ends this account's sessions on every device, including this one.
+export async function signOutEverywhere() {
+  const reply = await send<{ redirect: string }>("DELETE", "/session/all");
+  invalidate();
+  go(reply.data?.redirect ?? "/select-role");
+}
 export async function setLocale(formData: FormData) {
   await send("PUT", "/locale", { locale: text(formData, "locale") });
   // The page text comes from the root layout, which reads the language cookie.
@@ -120,7 +136,7 @@ export async function setScenario(formData: FormData) {
       ? "/log"
       : from.startsWith("/farms/")
         ? "/farms"
-        : from.startsWith("/ponds/") || !from.startsWith("/") || from.startsWith("//")
+        : from.startsWith("/ponds/") || !safePath(from)
           ? "/"
           : from,
   );

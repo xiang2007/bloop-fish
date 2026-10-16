@@ -1,21 +1,21 @@
 "use client";
 
+import { useActionState } from "react";
 import { useSearchParams } from "next/navigation";
 import { signIn } from "@/lib/actions";
 import { ArrowRightIcon, BrandMark, ChartIcon, ClipboardIcon, FileIcon, UserIcon } from "../components/icons";
 import { buttonClass, inputClass } from "../components/ui";
 import { useI18n } from "../components/I18nProvider";
 import { useTitle } from "../components/Api";
-import { useApi } from "@/lib/api";
-import type { Session } from "@backend/lib/session";
 import LanguageSwitcher from "../components/LanguageSwitcher";
 
 export default function SelectRolePage() {
   const { t } = useI18n();
   useTitle(t("signin.title"));
   const nextPath = useSearchParams().get("next") ?? "";
-  // The name cookie is httpOnly, so the API tells us who signed in last.
-  const savedName = useApi<{ session: Session | null }>("/session").data?.session?.name ?? "";
+  const [state, formAction, pending] = useActionState(signIn, { status: "idle" });
+  const errorMessage =
+    state.status !== "error" ? null : state.code === "locked" ? t("signin.locked") : t("signin.invalid");
 
   return (
     <div className="grid min-h-dvh lg:grid-cols-[1.05fr_1fr]">
@@ -66,65 +66,50 @@ export default function SelectRolePage() {
           </div>
 
           <h2 className="text-balance text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
-            {t("signin.who")}
+            {t("signin.heading")}
           </h2>
-          <p className="mt-2 text-pretty text-sm leading-6 text-ink-2">{t("signin.choose")}</p>
+          <p className="mt-2 text-pretty text-sm leading-6 text-ink-2">{t("signin.headingHelp")}</p>
           <LanguageSwitcher className="mt-4" />
 
-          <div className="mt-8 space-y-4">
-            <form action={signIn} className="rounded-lg border border-line bg-surface p-5">
-              <input type="hidden" name="role" value="owner" />
-              <input type="hidden" name="next" value={nextPath} />
-              <div className="flex items-start gap-4">
-                <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-brand">
-                  <ChartIcon className="size-5" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-semibold text-ink">{t("nav.farmOwner")}</h3>
-                  <p className="mt-0.5 text-sm text-ink-3">{t("signin.ownerDescription")}</p>
-                </div>
-              </div>
-              <button type="submit" className={`${buttonClass("primary", "md")} mt-4 w-full`}>
-                {t("signin.openDashboard")}
-                <ArrowRightIcon className="size-4" />
-              </button>
-            </form>
-
-            <form action={signIn} className="rounded-lg border border-line bg-surface p-5">
-              <input type="hidden" name="role" value="worker" />
-              <input type="hidden" name="next" value={nextPath} />
-              <div className="flex items-start gap-4">
-                <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-surface-3 text-ink-2">
-                  <ClipboardIcon className="size-5" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-semibold text-ink">{t("signin.worker")}</h3>
-                  <p className="mt-0.5 text-sm text-ink-3">{t("signin.workerDescription")}</p>
-                </div>
-              </div>
-              <label htmlFor="worker-name" className="mt-4 mb-1.5 block text-sm font-medium text-ink-2">
-                {t("signin.yourName")}
-              </label>
-              <div className="relative">
-                <UserIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-3" />
-                <input
-                  id="worker-name"
-                  name="name"
-                  key={savedName}
-                  defaultValue={savedName}
-                  required
-                  maxLength={40}
-                  autoComplete="given-name"
-                  placeholder={t("signin.namePlaceholder")}
-                  className={`${inputClass} h-11 pl-9 text-base`}
-                />
-              </div>
-              <button type="submit" className={`${buttonClass("secondary", "md")} mt-3 w-full`}>
-                {t("signin.startLog")}
-                <ArrowRightIcon className="size-4" />
-              </button>
-            </form>
-          </div>
+          <form action={formAction} className="mt-8 rounded-lg border border-line bg-surface p-5">
+            <input type="hidden" name="next" value={nextPath} />
+            <label htmlFor="username" className="mb-1.5 block text-sm font-medium text-ink-2">
+              {t("signin.username")}
+            </label>
+            <div className="relative">
+              <UserIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-3" />
+              <input
+                id="username"
+                name="username"
+                required
+                maxLength={40}
+                autoComplete="username"
+                autoCapitalize="none"
+                spellCheck={false}
+                className={`${inputClass} h-11 pl-9 text-base`}
+              />
+            </div>
+            <label htmlFor="password" className="mt-3 mb-1.5 block text-sm font-medium text-ink-2">
+              {t("signin.password")}
+            </label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              required
+              autoComplete="current-password"
+              className={`${inputClass} h-11 text-base`}
+            />
+            {errorMessage && (
+              <p role="alert" className="mt-3 text-sm text-danger">
+                {errorMessage}
+              </p>
+            )}
+            <button type="submit" disabled={pending} className={`${buttonClass("primary", "md")} mt-4 w-full`}>
+              {t("signin.submit")}
+              <ArrowRightIcon className="size-4" />
+            </button>
+          </form>
         </div>
       </main>
     </div>

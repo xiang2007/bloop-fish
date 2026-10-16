@@ -4,7 +4,9 @@ import { dateToDayKey, monthsBetween, monthKeyOf } from "@fisheye/shared/dates";
 
 function csvCell(value: string | number | null | undefined) {
   if (value === null || value === undefined) return "";
-  const text = String(value);
+  let text = String(value);
+  // Notes are typed by workers; stop Excel treating one as a formula.
+  if (typeof value === "string" && /^[=+\-@\t\r]/.test(text)) text = `'${text}`;
   return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 

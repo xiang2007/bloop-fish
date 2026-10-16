@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { createPond, deleteFarm, saveBoxKg, saveFarm, saveFeedType, saveSizeGrade } from "@/lib/actions";
+import { createPond, createUser, deleteFarm, saveBoxKg, saveFarm, saveFeedType, saveSizeGrade, saveUser } from "@/lib/actions";
 import type { FormState } from "@/lib/actions";
 import ConfirmButton from "@/app/components/ConfirmButton";
 import { useI18n } from "@/app/components/I18nProvider";
@@ -269,6 +269,115 @@ export function BoxKgForm({ boxKg }: { boxKg: number }) {
         </button>
       </div>
       <p className="mt-1.5 text-xs text-ink-3">{t("settings.boxKgHint")}</p>
+      <FormMessage state={state} />
+    </form>
+  );
+}
+
+export type UserEntry = { id: number; name: string; username: string; role: "owner" | "worker"; active: boolean; isMe: boolean };
+
+function RoleSelect({ defaultValue, form, label }: { defaultValue: string; form?: string; label: string }) {
+  const { t } = useI18n();
+  return (
+    <select name="role" form={form} defaultValue={defaultValue} aria-label={label} className={compactInput}>
+      <option value="worker">{t("users.roleWorker")}</option>
+      <option value="owner">{t("users.roleOwner")}</option>
+    </select>
+  );
+}
+
+export function UserRow({ user }: { user: UserEntry }) {
+  const { t } = useI18n();
+  const [state, formAction, pending] = useActionState<FormState, FormData>(saveUser, { status: "idle" });
+  const formId = `user-${user.id}`;
+  const errors = state.status === "error" ? state.fieldErrors ?? {} : {};
+  const message = firstError(state);
+
+  return (
+    <tr className="border-b border-line align-top last:border-0">
+      <td className="px-5 py-2.5">
+        <form id={formId} action={formAction}>
+          <input type="hidden" name="id" value={user.id} />
+        </form>
+        <p className="font-medium text-ink">
+          {user.name}
+          {user.isMe && <span className="ml-2 text-xs font-normal text-ink-3">{t("users.you")}</span>}
+        </p>
+        <p className="text-xs text-ink-3">{user.username}</p>
+      </td>
+      <td className="px-2 py-2.5">
+        <RoleSelect form={formId} defaultValue={user.role} label={t("users.role")} />
+      </td>
+      <td className="px-2 py-2.5">
+        <input
+          form={formId}
+          name="password"
+          type="password"
+          autoComplete="new-password"
+          placeholder={t("users.newPassword")}
+          aria-label={t("users.newPasswordAria", { name: user.name })}
+          className={cx(compactInput, "w-40", errors.password && "border-danger")}
+        />
+      </td>
+      <td className="px-2 py-2.5">
+        <label className="flex h-9 items-center">
+          <input
+            form={formId}
+            type="checkbox"
+            name="active"
+            defaultChecked={user.active}
+            aria-label={t("settings.activeAria", { name: user.name })}
+            className="size-4 accent-[var(--brand)]"
+          />
+        </label>
+      </td>
+      <td className="px-5 py-2.5 text-right">
+        <SaveButton formId={formId} state={state} pending={pending} />
+        {message && state.status === "error" && <p className="mt-1 max-w-40 text-left text-xs text-danger">{message}</p>}
+      </td>
+    </tr>
+  );
+}
+
+export function NewUserForm() {
+  const { t } = useI18n();
+  const [state, formAction, pending] = useActionState<FormState, FormData>(createUser, { status: "idle" });
+  const errors = state.status === "error" ? state.fieldErrors ?? {} : {};
+
+  return (
+    <form action={formAction} className="border-t border-line p-5">
+      <p className="mb-3 text-sm font-medium text-ink-2">{t("users.add")}</p>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <input name="name" placeholder={t("users.name")} required maxLength={40} aria-label={t("users.name")} className={cx(compactInput, errors.name && "border-danger")} />
+        <input
+          name="username"
+          placeholder={t("users.username")}
+          required
+          maxLength={30}
+          autoCapitalize="none"
+          autoComplete="off"
+          aria-label={t("users.username")}
+          className={cx(compactInput, errors.username && "border-danger")}
+        />
+        <input
+          name="password"
+          type="password"
+          placeholder={t("signin.password")}
+          required
+          autoComplete="new-password"
+          aria-label={t("signin.password")}
+          className={cx(compactInput, errors.password && "border-danger")}
+        />
+        <div className="flex gap-2">
+          <div className="min-w-0 flex-1">
+            <RoleSelect defaultValue="worker" label={t("users.role")} />
+          </div>
+          <button type="submit" disabled={pending} className={buttonClass("primary", "sm") + " h-9"}>
+            <PlusIcon className="size-3.5" />
+            {t("form.add")}
+          </button>
+        </div>
+      </div>
       <FormMessage state={state} />
     </form>
   );

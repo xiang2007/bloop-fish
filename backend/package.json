@@ -9,7 +9,8 @@
     "build": "prisma generate && prisma migrate deploy",
     "typecheck": "tsc --noEmit",
     "db:mock": "tsx prisma/mock.ts",
-    "db:scenario": "tsx prisma/scenario.ts"
+    "db:scenario": "tsx prisma/scenario.ts",
+    "user:create": "tsx prisma/create-user.ts"
   },
   "dependencies": {
     "@fisheye/shared": "*",

@@ -13,6 +13,34 @@ datasource db {
 // Calendar days are stored as UTC midnight of the farm-local date
 // (see lib/dates.ts) so a record never drifts across a day boundary.
 
+// A person who can sign in. `role` decides which side of the app they get:
+// "owner" (dashboard) or "worker" (daily log only). Accounts always live in
+// the real schema, whichever demo scenario is showing.
+model User {
+  id             Int      @id @default(autoincrement())
+  username       String   @unique
+  name           String
+  passwordHash   String   @map("password_hash")
+  role           String   @default("worker")
+  active         Boolean  @default(true)
+  // Bumped on a password reset, deactivation or "sign out everywhere"; a
+  // session cookie only works while its version matches this one.
+  sessionVersion Int      @default(0) @map("session_version")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@map("users")
+}
+
+// Failed-sign-in and abusable-action counters, kept in the database so the
+// limits hold across restarts and across several server instances.
+model AuthThrottle {
+  key         String   @id
+  count       Int
+  windowStart DateTime @map("window_start")
+
+  @@map("auth_throttle")
+}
+
 // A site the ponds are grouped under on the farm map.
 model Farm {
   id        Int      @id @default(autoincrement())
@@ -25,28 +53,28 @@ model Farm {
 }
 
 model Pond {
-  id           Int       @id @default(autoincrement())
-  name         String    @unique
-  species      String?
-  farmId       Int?      @map("farm_id")
+  id             Int       @id @default(autoincrement())
+  name           String    @unique
+  species        String?
+  farmId         Int?      @map("farm_id")
   // Start of the current culture cycle ("0 Month" in the spreadsheet).
-  stockedAt    DateTime? @map("stocked_at")
-  stockedCount Int?      @map("stocked_count")
+  stockedAt      DateTime? @map("stocked_at")
+  stockedCount   Int?      @map("stocked_count")
   // Planned length of a culture cycle, stocking to harvest.
-  cycleMonths  Int       @default(8) @map("cycle_months")
+  cycleMonths    Int       @default(8) @map("cycle_months")
   // Feed conversion ratio used to estimate biomass from feed consumed.
-  assumedFcr   Float     @default(1.35) @map("assumed_fcr")
+  assumedFcr     Float     @default(1.35) @map("assumed_fcr")
   // Weight fish should reach before harvest; drives the projected harvest date.
-  targetWeightKg Float?  @map("target_weight_kg")
-  active       Boolean   @default(true)
-  createdAt    DateTime  @default(now()) @map("created_at")
+  targetWeightKg Float?    @map("target_weight_kg")
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now()) @map("created_at")
 
   // Physical specs, shown in the pond's spec box.
-  areaM2       Float?    @map("area_m2")
-  depthM       Float?    @map("depth_m")
-  pondType     String?   @map("pond_type")
-  waterSource  String?   @map("water_source")
-  aerators     Int?
+  areaM2         Float?    @map("area_m2")
+  depthM         Float?    @map("depth_m")
+  pondType       String?   @map("pond_type")
+  waterSource    String?   @map("water_source")
+  aerators       Int?
   // Owner's latest read of the water: "good", "fair" or "poor".
   waterStatus    String?   @map("water_status")
   waterNote      String?   @map("water_note")
@@ -60,7 +88,6 @@ model Pond {
   harvests  Harvest[]
 
   @@index([farmId])
-
   @@map("ponds")
 }
 
