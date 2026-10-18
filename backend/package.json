@@ -7,6 +7,7 @@
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",
     "build": "prisma generate && prisma migrate deploy",
+    "generate": "prisma generate",
     "typecheck": "tsc --noEmit",
     "db:mock": "tsx prisma/mock.ts",
     "db:scenario": "tsx prisma/scenario.ts",
