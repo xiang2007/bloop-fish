@@ -2,7 +2,7 @@ import { isRole } from "@fisheye/shared/role";
 import type { ActionResult } from "@fisheye/shared/forms";
 import { getI18n } from "../i18n";
 import type { Fields } from "../http";
-import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, hashPassword, passwordProblem } from "../password";
+import { MAX_PASSWORD_LENGTH, hashPassword } from "../password";
 import { getAuthClient } from "../prisma";
 import { requireOwner } from "../session";
 
@@ -28,12 +28,7 @@ export async function createUser(formData: Fields): Promise<ActionResult> {
   const errors: Record<string, string> = {};
   if (!name) errors.name = t("users.nameRequired");
   if (!USERNAME_PATTERN.test(username)) errors.username = t("users.usernameRule");
-  if (password.length > MAX_PASSWORD_LENGTH) errors.password = t("users.passwordRule", { n: MIN_PASSWORD_LENGTH });
-  else {
-    const problem = passwordProblem(password, [username, name]);
-    if (problem === "short") errors.password = t("users.passwordRule", { n: MIN_PASSWORD_LENGTH });
-    else if (problem === "weak") errors.password = t("users.passwordWeak");
-  }
+  if (!password || password.length > MAX_PASSWORD_LENGTH) errors.password = t("users.passwordRule", { n: MAX_PASSWORD_LENGTH });
   if (!isRole(role)) errors.role = t("users.roleRequired");
   if (Object.keys(errors).length > 0) return invalid(errors);
 
@@ -65,11 +60,7 @@ export async function saveUser(
   const user = Number.isInteger(id) ? await db.user.findUnique({ where: { id } }) : null;
   if (!user) return { status: "error", message: t("users.notFound") };
 
-  if (password) {
-    const problem = password.length > MAX_PASSWORD_LENGTH ? "short" : passwordProblem(password, [user.username, user.name]);
-    if (problem === "short") return invalid({ password: t("users.passwordRule", { n: MIN_PASSWORD_LENGTH }) });
-    if (problem === "weak") return invalid({ password: t("users.passwordWeak") });
-  }
+  if (password.length > MAX_PASSWORD_LENGTH) return invalid({ password: t("users.passwordRule", { n: MAX_PASSWORD_LENGTH }) });
 
   // An owner can't lock themselves out, and the farm always keeps an owner.
   const losesOwner = user.role === "owner" && user.active && (role !== "owner" || !active);
