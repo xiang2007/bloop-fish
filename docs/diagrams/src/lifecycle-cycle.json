@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "Pond Culture Cycle Lifecycle",
+    "output": "../lifecycle-cycle.html",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1030,
+      600
+    ]
+  },
+  "lanes": [
+    {
+      "id": "main",
+      "label": "Cycle phases"
+    },
+    {
+      "id": "side",
+      "label": "Interruptions"
+    }
+  ],
+  "states": [
+    {
+      "id": "unset",
+      "type": "start",
+      "label": "Unset",
+      "sublabel": "no stocking date",
+      "lane": "main",
+      "col": 0,
+      "step": "01",
+      "width": 86
+    },
+    {
+      "id": "growing",
+      "type": "active",
+      "label": "Growing",
+      "sublabel": "stage by quarter",
+      "lane": "main",
+      "col": 1,
+      "step": "02",
+      "tag": "feed + log",
+      "width": 86
+    },
+    {
+      "id": "ready",
+      "type": "decision",
+      "label": "Ready",
+      "sublabel": "past planned date",
+      "lane": "main",
+      "col": 2,
+      "step": "03",
+      "tag": "harvest",
+      "width": 86
+    },
+    {
+      "id": "empty",
+      "type": "success",
+      "label": "Empty",
+      "sublabel": "awaiting restock",
+      "lane": "main",
+      "col": 3,
+      "step": "04",
+      "tag": "closed",
+      "width": 86
+    },
+    {
+      "id": "partial",
+      "type": "waiting",
+      "label": "Partial",
+      "sublabel": "stock taken off",
+      "lane": "side",
+      "col": 1,
+      "tag": "optional",
+      "width": 86
+    }
+  ],
+  "transitions": [
+    {
+      "id": "start",
+      "from": "unset",
+      "to": "growing",
+      "label": "stock",
+      "variant": "emphasis"
+    },
+    {
+      "id": "due",
+      "from": "growing",
+      "to": "ready",
+      "label": "due",
+      "variant": "default"
+    },
+    {
+      "id": "final",
+      "from": "ready",
+      "to": "empty",
+      "label": "harvest",
+      "variant": "emphasis"
+    },
+    {
+      "id": "partial-in",
+      "from": "growing",
+      "to": "partial",
+      "label": "partial harvest",
+      "variant": "dashed",
+      "route": "drop"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Closing",
+      "items": [
+        "Final harvest or total loss snapshots totals",
+        "Pond stockedAt is cleared"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Undo",
+      "items": [
+        "reopenLastCycle restores the cycle",
+        "Restock must follow the last end date"
+      ]
+    }
+  ]
+}

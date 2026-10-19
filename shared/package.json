@@ -1,0 +1,10 @@
+{
+  "name": "@fisheye/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pure TypeScript used by both the API and the web app: dates, formatting, cycle/health/metrics maths, translations.",
+  "exports": {
+    "./i18n/messages": "./src/i18n/messages/index.ts",
+    "./*": "./src/*.ts"
+  }
+}

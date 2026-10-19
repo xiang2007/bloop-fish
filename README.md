@@ -26,16 +26,24 @@ See [`Screenshot_2026-09-20_at_10.23.41_PM.png`](./Screenshot_2026-09-20_at_10.2
 
 ## Running locally
 
+Two apps: a REST API (`backend/`, port 4000) and the web app (`frontend/`, port 3000). The web app forwards `/api/*` to the API. Shared TypeScript lives in `shared/`. See [`docs/2026-10-05-rest-api-refactor.md`](./docs/2026-10-05-rest-api-refactor.md) and [`docs/API.md`](./docs/API.md).
+
 ```bash
-npm install
-npx prisma migrate deploy   # apply migrations to the Postgres at DATABASE_URL
-npx prisma db seed          # feed catalogue, Ponds 1–7, and Pond 1 imported from data/*.csv
-npm run dev                 # http://localhost:3000
+npm install                       # installs all three packages (npm workspaces)
+cp backend/.env.example backend/.env.local   # then put your PostgreSQL URL in it
+cd backend
+npx prisma generate               # Prisma client -> backend/src/generated
+npx prisma migrate deploy         # apply migrations to the Postgres at DATABASE_URL
+npx prisma db seed                # feed catalogue, Ponds 1–7, and Pond 1 imported from backend/data/*.csv
+cd ..
+npm run dev                       # API on :4000 and web on http://localhost:3000
 ```
+
+Other commands: `npm run typecheck`, `npm run lint`, `npm run build`. Set `BACKEND_URL` for the web app if the API is not on `http://localhost:4000`.
 
 Choose **Farm owner** for the dashboard or **Farm worker** for the phone daily log.
 
-Optional demo data (local databases only; pass `-- --force` to write elsewhere):
+Optional demo data (local databases only; pass `-- --force` to write elsewhere), run inside `backend/`:
 
 ```bash
 npm run db:mock             # made-up history for Ponds 2–7
@@ -46,7 +54,7 @@ Once the scenario exists, the sidebar shows a **Real farm / 100 ponds** switch. 
 
 ## What the app does
 
-- **Spreadsheet import** (`/import`, `lib/import/`): reads the Fish Pond Performance Report CSV — every monthly block of daily feed type, bags and dead fish, the monthly cost tables and the average-weight summary. The sheet is cross-checked against its own totals before saving; mismatches (e.g. a mislabelled month heading, a cost table copied from the previous month, bags costed at the wrong pack size) are listed on the pond's *Data & imports* tab. Daily rows are treated as the source of truth. An import can be rolled back.
+- **Spreadsheet import** (`/import`, `shared/src/import/`): reads the Fish Pond Performance Report CSV — every monthly block of daily feed type, bags and dead fish, the monthly cost tables and the average-weight summary. The sheet is cross-checked against its own totals before saving; mismatches (e.g. a mislabelled month heading, a cost table copied from the previous month, bags costed at the wrong pack size) are listed on the pond's *Data & imports* tab. Daily rows are treated as the source of truth. An import can be rolled back.
 - **Daily log** (`/log`): one screen per pond for workers on Android phones — feed type, bags, dead fish, optional note, and monthly sample weighing. One record per pond per day; saving again updates it.
 - **Owner dashboard** (`/`, `/ponds/[id]`): standing stock, feed cost, monthly feed and mortality, growth curve, the sheet's monthly summary recalculated from daily records, feed programme, and rule-based alerts (logging gaps, sampling due, mortality spikes, feed stock).
 - **Feed stock** (`/inventory`): stocktakes and deliveries; on-hand = last stocktake + deliveries − bags logged since, with days of cover.
