@@ -39,7 +39,7 @@ cd ..
 npm run dev                       # API on :4000 and web on http://localhost:3000
 ```
 
-Other commands: `npm run typecheck`, `npm run lint`, `npm run build`. Set `BACKEND_URL` for the web app if the API is not on `http://localhost:4000`.
+Other commands: `npm run typecheck`, `npm run lint`, `npm run build`. In development the web app forwards `/api/*` to `http://localhost:4000`; set `BACKEND_URL` if the API runs elsewhere. In a production build without `BACKEND_URL` (e.g. Vercel) the web app serves the API itself from `frontend/app/api`.
 
 Choose **Farm owner** for the dashboard or **Farm worker** for the phone daily log.
 
