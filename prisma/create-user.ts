@@ -8,7 +8,7 @@
 import { config } from "dotenv";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../app/generated/prisma/client";
-import { MIN_PASSWORD_LENGTH, hashPassword, passwordProblem } from "../lib/password";
+import { MAX_PASSWORD_LENGTH, hashPassword } from "../lib/password";
 
 config({ path: ".env.local", quiet: true });
 config({ path: ".env", quiet: true });
@@ -49,13 +49,8 @@ async function main() {
 
   const fromEnv = process.env.FISHEYE_PASSWORD;
   const password = fromEnv ?? (await askHidden(`Password for ${username}: `));
-  const problem = passwordProblem(password, [username, name]);
-  if (problem === "short") {
-    console.error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
-    process.exit(1);
-  }
-  if (problem === "weak") {
-    console.error("That password is too easy to guess. Avoid common words and your own name or username.");
+  if (!password || password.length > MAX_PASSWORD_LENGTH) {
+    console.error(`Password must be 1 to ${MAX_PASSWORD_LENGTH} characters.`);
     process.exit(1);
   }
   if (fromEnv === undefined && password !== (await askHidden("Repeat password: "))) {
