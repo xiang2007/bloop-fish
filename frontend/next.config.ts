@@ -1,8 +1,10 @@
 import type { NextConfig } from "next";
 
 // Where the REST API runs. The browser only ever talks to this app's own
-// /api/* paths, which are forwarded here, so cookies stay same-origin.
-const backendUrl = process.env.BACKEND_URL ?? "http://localhost:4000";
+// /api/* paths, so cookies stay same-origin. In development they are forwarded
+// to the standalone API (npm run dev -w backend); BACKEND_URL points them at
+// another server. Otherwise app/api serves the API from this deployment.
+const backendUrl = process.env.BACKEND_URL ?? (process.env.NODE_ENV === "development" ? "http://localhost:4000" : undefined);
 
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -21,7 +23,7 @@ const nextConfig: NextConfig = {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
   async rewrites() {
-    return [{ source: "/api/:path*", destination: `${backendUrl}/api/:path*` }];
+    return backendUrl ? [{ source: "/api/:path*", destination: `${backendUrl}/api/:path*` }] : [];
   },
 };
 

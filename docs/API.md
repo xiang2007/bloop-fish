@@ -1,6 +1,6 @@
 # Fisheye REST API
 
-The backend (`backend/`, Hono on Node) serves everything under `/api`. The web app never calls it directly from another origin: Next.js forwards `/api/*` to the backend (`frontend/next.config.ts`, `BACKEND_URL`, default `http://localhost:4000`), so cookies stay same-origin and there is no CORS.
+The backend (`backend/`, Hono on Node) serves everything under `/api`. The web app never calls it directly from another origin: Next.js forwards `/api/*` to the backend in development (`frontend/next.config.ts`, `BACKEND_URL`, default `http://localhost:4000`), and in a production build without `BACKEND_URL` serves the same Hono app itself from `frontend/app/api`. Either way cookies stay same-origin and there is no CORS.
 
 ## Conventions
 
