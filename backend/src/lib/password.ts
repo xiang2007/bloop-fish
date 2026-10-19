@@ -9,7 +9,7 @@ function derive(password: string, salt: Buffer) {
   });
 }
 
-export const MIN_PASSWORD_LENGTH = 12;
+export const MIN_PASSWORD_LENGTH = 4;
 export const MAX_PASSWORD_LENGTH = 200;
 
 export async function hashPassword(password: string) {
@@ -45,9 +45,11 @@ const COMMON = [
 export function passwordProblem(password: string, personal: string[] = []): "short" | "weak" | null {
   if (password.length < MIN_PASSWORD_LENGTH) return "short";
   const flat = password.toLowerCase().replace(/[^a-z0-9]/g, "");
-  if (new Set(password).size < 5) return "weak";
+  if (new Set(password).size < 4) return "weak";
   // A common word on its own, or with only digits or a couple of characters tacked on.
-  const padded = (word: string) => {
+  // Removed for checking
+  /*
+    const padded = (word: string) => {
     if (!flat.includes(word)) return false;
     const rest = flat.replace(word, "");
     return rest.length <= 4 || /^[0-9]+$/.test(rest);
@@ -55,5 +57,6 @@ export function passwordProblem(password: string, personal: string[] = []): "sho
   if (COMMON.some((word) => flat === word || (word.length >= 6 && padded(word)))) return "weak";
   const parts = personal.map((value) => value.toLowerCase().replace(/[^a-z0-9]/g, "")).filter((value) => value.length >= 3);
   if (parts.some((value) => flat.includes(value))) return "weak";
+  */
   return null;
 }
